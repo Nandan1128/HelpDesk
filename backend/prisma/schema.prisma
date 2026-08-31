@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  AGENT
+}
+
+enum TicketStatus {
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
+enum TicketCategory {
+  GENERAL_QUESTION
+  TECHNICAL_QUESTION
+  REFUND_REQUEST
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SenderType {
+  CUSTOMER
+  AGENT
+  SYSTEM
+}
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  passwordHash    String
+  name            String
+  role            Role           @default(AGENT)
+  isActive        Boolean        @default(true)
+  assignedTickets Ticket[]       @relation("AssignedAgent")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  sid       String   @unique
+  data      String
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model Ticket {
+  id                String          @id @default(uuid())
+  ticketNumber      Int             @unique @default(autoincrement())
+  subject           String
+  status            TicketStatus    @default(OPEN)
+  category          TicketCategory  @default(GENERAL_QUESTION)
+  priority          Priority        @default(MEDIUM)
+  customerEmail     String
+  customerName      String?
+  assignedToId      String?
+  assignedTo        User?           @relation("AssignedAgent", fields: [assignedToId], references: [id], onDelete: SetNull)
+  aiSummary         String?
+  aiSuggestedReply  String?
+  messages          Message[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([customerEmail])
+  @@index([assignedToId])
+  @@index([createdAt])
+}
+
+model Message {
+  id              String      @id @default(uuid())
+  ticketId        String
+  ticket          Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderType      SenderType
+  senderEmail     String
+  senderName      String?
+  body            String
+  messageIdHeader String?
+  inReplyToHeader String?
+  createdAt       DateTime    @default(now())
+
+  @@index([ticketId])
+  @@index([createdAt])
+}
+
+model KnowledgeBaseArticle {
+  id        String          @id @default(uuid())
+  title     String
+  content   String
+  category  TicketCategory  @default(GENERAL_QUESTION)
+  embedding String?         // Stores vector embedding as JSON string representation
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([category])
+}

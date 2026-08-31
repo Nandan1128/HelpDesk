@@ -2,10 +2,11 @@
 
 ## Phase 1: Project Setup
 
-- [ ] Initialize monorepo structure (`/client`, `/server`)
-- [ ] Set up Express server with TypeScript
-- [ ] Set up React app with TypeScript
-- [ ] Set up PostgreSQL database
+- [x] Initialize monorepo structure (`/backend`, `/frontend`, `/docker`)
+- [x] Set up Express server with TypeScript, Bun, and health check API
+- [x] Set up React app with TypeScript, Tailwind CSS, and Vite
+- [x] Set up PostgreSQL database with Prisma ORM and pgvector
+- [x] Create database schema, migrations, and seed script
 
 ## Phase 2: Authentication
 
@@ -35,11 +36,12 @@
 
 ## Phase 5: AI Features
 
-- [ ] Set up Claude API integration
+- [ ] Set up Google Gemini API integration (`@google/genai`)
 - [ ] Implement auto-classification endpoint (categorize incoming tickets)
 - [ ] Implement AI summary endpoint (generate ticket summary)
-- [ ] Implement AI suggested reply endpoint
+- [ ] Implement AI suggested reply endpoint with RAG
 - [ ] Build knowledge base structure and seed with initial content
+
 - [ ] Integrate AI features into ticket detail page UI
 
 ## Phase 6: Email Integration

@@ -1,0 +1,38 @@
+# Node / Bun
+node_modules/
+dist/
+build/
+.bun/
+bun.lockb
+bun.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Database / SQLite
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+postgres_data/
+
+# Prisma
+prisma/dev.db
+prisma/dev.db-journal
