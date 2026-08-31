@@ -10,6 +10,15 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters').default('development-secret-key-32-chars-minimum-ticket-ai'),
   BETTER_AUTH_URL: z.string().default('http://localhost:5000'),
+  TRUSTED_ORIGINS: z
+    .string()
+    .min(1, 'TRUSTED_ORIGINS is required in .env')
+    .transform((val) =>
+      val
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    ),
   SESSION_SECRET: z.string().min(16, 'SESSION_SECRET must be at least 16 characters').default('development-secret-key-32-chars-minimum-ticket-ai'),
   GEMINI_API_KEY: z.string().optional().default(''),
   EMAIL_PROVIDER: z.enum(['mock', 'sendgrid', 'mailgun']).default('mock'),
