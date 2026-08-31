@@ -20,11 +20,12 @@ The system follows a decoupled Client-Server architecture:
 ## 2. Technology Choices & Responsibilities
 
 ### 2.1 Frontend
-* **Core Framework:** React (Vite-powered SPA) with TypeScript
-* **Styling & UI Components:** Tailwind CSS (with headless/accessible UI components such as Radix UI / shadcn/ui)
+* **Core Framework:** React 18 (Vite-powered SPA) with TypeScript
+* **Styling & UI Components:** Tailwind CSS v3 with **shadcn/ui** (default theme, neutral base color, CSS variables, `@/components/ui/` primitives)
+* **UI Primitives:** Card, Input, Label, Button, Alert, Badge, Separator, and Lucide React icons
 * **State Management & Data Fetching:** TanStack Query (React Query) for server state caching, pagination, and polling
+* **Form Validation:** React Hook Form + Zod resolvers
 * **Routing:** React Router (v6+)
-* **Icons:** Lucide React
 
 ### 2.2 Backend
 * **Runtime & Framework:** Node.js + Express.js with TypeScript

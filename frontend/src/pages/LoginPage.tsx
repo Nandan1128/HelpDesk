@@ -14,8 +14,23 @@ import {
   Shield,
   Headphones,
   ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { signIn } from '../lib/auth-client';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 const loginSchema = z.object({
   email: z
@@ -82,177 +97,205 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between relative overflow-hidden">
       {/* Background ambient lighting effects */}
-      <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[20%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[20%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Header */}
+      {/* Top Navigation / Brand */}
       <header className="px-6 py-6 flex items-center justify-between relative z-10">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Bot className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+            <Bot className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
-            <span className="text-lg font-bold text-white tracking-tight">TicketAI</span>
-            <span className="text-xs text-slate-400 block -mt-0.5">Support Workspace</span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold tracking-tight">TicketAI</span>
+              <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-semibold">
+                <Sparkles className="w-3 h-3 mr-1 text-primary" />
+                AI Support
+              </Badge>
+            </div>
+            <span className="text-xs text-muted-foreground block -mt-0.5">Support Workspace</span>
           </div>
         </div>
       </header>
 
-      {/* Main Login Card */}
+      {/* Main Login Form Container */}
       <main className="flex-1 flex items-center justify-center px-4 py-8 relative z-10">
-        <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
-          {/* Card Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-white tracking-tight">Welcome Back</h1>
-            <p className="text-sm text-slate-400 mt-1.5">
-              Sign in to manage support tickets and AI workflows
-            </p>
-          </div>
+        <Card className="w-full max-w-md border-border shadow-2xl backdrop-blur-sm bg-card/90">
+          <CardHeader className="text-center space-y-1.5">
+            <CardTitle className="text-2xl font-bold tracking-tight">Welcome Back</CardTitle>
+            <CardDescription>
+              Sign in to manage support tickets and AI triage workflows
+            </CardDescription>
+          </CardHeader>
 
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="mb-6 p-4 rounded-xl bg-red-950/50 border border-red-800/60 text-red-300 text-sm flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400 mt-0.5" />
-              <div className="flex-1 text-xs sm:text-sm">{errorMessage}</div>
-            </div>
-          )}
+          <CardContent className="space-y-6">
+            {/* Server Error Alert */}
+            {errorMessage && (
+              <Alert variant="destructive" className="border-red-500/50 bg-red-500/10 text-red-600 dark:text-red-400">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400 mt-0.5" />
+                <AlertDescription className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">
+                  {errorMessage}
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-            {/* Email Field */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="w-4 h-4" />
+            {/* Login Form */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <Input
+                    id="email"
+                    type="email"
+                    {...register('email')}
+                    placeholder="agent@ticketai.local"
+                    autoComplete="email"
+                    className={`pl-9 ${
+                      errors.email
+                        ? '!border-red-500 !ring-red-500/20 focus-visible:!border-red-500 focus-visible:!ring-red-500/30'
+                        : ''
+                    }`}
+                    aria-invalid={!!errors.email}
+                  />
                 </div>
-                <input
-                  type="email"
-                  {...register('email')}
-                  placeholder="agent@ticketai.local"
-                  autoComplete="email"
-                  className={`w-full pl-10 pr-4 py-2.5 bg-slate-950/60 border rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 transition-colors ${
-                    errors.email
-                      ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/30'
-                      : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/50'
-                  }`}
-                />
+                {errors.email && (
+                  <p className="text-xs text-destructive flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{errors.email.message}</span>
+                  </p>
+                )}
               </div>
-              {errors.email && (
-                <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{errors.email.message}</span>
-                </p>
-              )}
-            </div>
 
-            {/* Password Field */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                  Password
-                </label>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Lock className="w-4 h-4" />
+              {/* Password */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
                 </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  {...register('password')}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  className={`w-full pl-10 pr-11 py-2.5 bg-slate-950/60 border rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 transition-colors ${
-                    errors.password
-                      ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/30'
-                      : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/50'
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 focus:outline-none transition-colors"
-                  title={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    {...register('password')}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    className={`pl-9 pr-10 ${
+                      errors.password
+                        ? '!border-red-500 !ring-red-500/20 focus-visible:!border-red-500 focus-visible:!ring-red-500/30'
+                        : ''
+                    }`}
+                    aria-invalid={!!errors.password}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-xs text-destructive flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{errors.password.message}</span>
+                  </p>
+                )}
               </div>
-              {errors.password && (
-                <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{errors.password.message}</span>
-                </p>
-              )}
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                size="lg"
+                disabled={isSubmitting}
+                className="w-full mt-2 cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <span>Signing In...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign In</span>
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </form>
+
+            {/* Separator */}
+            <div className="relative py-2">
+              <Separator />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="bg-card px-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Quick Demo Accounts
+                </span>
+              </div>
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full mt-2 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-lg shadow-blue-600/30 hover:shadow-blue-500/40 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Signing In...</span>
-                </>
-              ) : (
-                <>
-                  <span>Sign In</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Quick Demo Credentials Helper */}
-          <div className="mt-8 pt-6 border-t border-slate-800/80">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 text-center">
-              Quick Fill Demo Accounts
-            </p>
+            {/* Quick Demo Credentials */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => fillDemoAccount('admin@ticketai.local', 'AdminPassword123!')}
-                className="flex items-center space-x-2 p-2.5 rounded-xl bg-slate-950/40 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-colors cursor-pointer"
+                className="h-auto py-2.5 px-3 flex items-center justify-start text-left gap-2.5 border-border hover:bg-accent/50 cursor-pointer"
               >
-                <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center flex-shrink-0">
-                  <Shield className="w-3.5 h-3.5" />
+                <div className="w-7 h-7 rounded-md bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                  <Shield className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold text-slate-200 truncate">Admin Account</div>
-                  <div className="text-[10px] text-slate-400 truncate">admin@ticketai.local</div>
+                  <div className="text-xs font-semibold truncate flex items-center gap-1">
+                    <span>Admin</span>
+                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Full</Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground truncate">admin@ticketai.local</div>
                 </div>
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => fillDemoAccount('sarah.agent@ticketai.local', 'AgentPassword123!')}
-                className="flex items-center space-x-2 p-2.5 rounded-xl bg-slate-950/40 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-colors cursor-pointer"
+                className="h-auto py-2.5 px-3 flex items-center justify-start text-left gap-2.5 border-border hover:bg-accent/50 cursor-pointer"
               >
-                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
-                  <Headphones className="w-3.5 h-3.5" />
+                <div className="w-7 h-7 rounded-md bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                  <Headphones className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold text-slate-200 truncate">Agent Account</div>
-                  <div className="text-[10px] text-slate-400 truncate">sarah.agent@ticketai...</div>
+                  <div className="text-xs font-semibold truncate flex items-center gap-1">
+                    <span>Agent</span>
+                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Queue</Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground truncate">sarah.agent@...</div>
                 </div>
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+
+          <CardFooter className="justify-center border-t py-4 text-center text-xs text-muted-foreground">
+            TicketAI &bull; Protected Support Portal
+          </CardFooter>
+        </Card>
       </main>
 
       {/* Footer */}
-      <footer className="py-4 px-6 text-center text-xs text-slate-500 relative z-10">
-        TicketAI &bull; Protected Support Portal
+      <footer className="py-4 px-6 text-center text-xs text-muted-foreground relative z-10">
+        Enterprise AI Ticket Management System
       </footer>
     </div>
   );
 }
 
 export default LoginPage;
+

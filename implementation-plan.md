@@ -4,17 +4,18 @@
 
 - [x] Initialize monorepo structure (`/backend`, `/frontend`, `/docker`)
 - [x] Set up Express server with TypeScript, Bun, and health check API
-- [x] Set up React app with TypeScript, Tailwind CSS, and Vite
+- [x] Set up React app with TypeScript, Tailwind CSS v3, and Vite
+- [x] Install and configure **shadcn/ui** with default theme tokens, CSS variables, and components (`Card`, `Input`, `Label`, `Button`, `Alert`, `Badge`, `Separator`)
 - [x] Set up PostgreSQL database with Prisma ORM and pgvector
 - [x] Create database schema, migrations, and seed script
 
-## Phase 2: Authentication
+## Phase 2: Authentication & Design System
 
-- [x] Create login page
-- [x] Implement login API endpoint
-- [x] Implement session-based authentication middleware
-- [x] Implement logout API endpoint
-- [x] Add route protection on the frontend (redirect to login if unauthenticated)
+- [x] Create shadcn-powered login page with Zod validation and reactive error states
+- [x] Configure Better Auth client and session integration
+- [x] Implement session-based authentication middleware & route protection
+- [x] Add global WebKit/Chrome autofill style normalization
+- [x] Adopt shadcn default theme tokens consistently across Layout, Navbar, and Home pages
 
 ## Phase 3: User Management
 
