@@ -13,8 +13,13 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       headers: fromNodeHeaders(req.headers),
     });
 
-    if (!sessionData || !sessionData.session) {
+    if (!sessionData || !sessionData.session || !sessionData.user) {
       return res.status(401).json({ error: 'Unauthorized: No active session' });
+    }
+
+    const user = sessionData.user as Record<string, unknown>;
+    if (user.isActive === false) {
+      return res.status(403).json({ error: 'Forbidden: Account has been deactivated' });
     }
 
     req.user = sessionData.user;

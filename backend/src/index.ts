@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { env } from './config/env.js';
 import { prisma } from './db/prisma.js';
@@ -7,6 +9,38 @@ import { auth } from './lib/auth.js';
 import { requireAuth, requireRole, AuthenticatedRequest } from './middleware/auth.middleware.js';
 
 const app = express();
+
+// Trust reverse proxy in production (for accurate client IP resolution & secure cookies)
+if (env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
+// HTTP Security Headers
+app.use(
+  helmet({
+    contentSecurityPolicy: env.NODE_ENV === 'production' ? undefined : false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+
+// General API Rate Limiter
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // Limit each IP to 300 requests per 15 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+// Dedicated Healthcheck Rate Limiter to prevent DB connection exhaustion
+const healthLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 60, // 60 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api', apiLimiter);
 
 app.use(
   cors({
@@ -22,7 +56,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Basic Healthcheck & DB ping
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', healthLimiter, async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({
@@ -32,19 +66,29 @@ app.get('/api/health', async (req, res) => {
       version: '1.0.0',
     });
   } catch (error) {
+    console.error('Health check database error:', error);
     res.status(500).json({
       status: 'unhealthy',
       database: 'disconnected',
-      error: error instanceof Error ? error.message : 'Unknown database error',
+      error: env.NODE_ENV === 'development' && error instanceof Error
+        ? error.message
+        : 'Database connectivity error',
     });
   }
 });
 
 // Protected Route: Returns current user & session from Better Auth
 app.get('/api/me', requireAuth, (req: AuthenticatedRequest, res) => {
+  if (!req.session) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Omit raw token to prevent client-side script leakage of HTTP-only session tokens
+  const { token, ...safeSession } = req.session as Record<string, unknown>;
+
   res.json({
     user: req.user,
-    session: req.session,
+    session: safeSession,
   });
 });
 

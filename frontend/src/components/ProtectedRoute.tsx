@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Bot, Loader2 } from 'lucide-react';
-import { useSession } from '../lib/auth-client';
+import { useSession, AuthUser } from '../lib/auth-client';
 
 export function ProtectedRoute() {
   const { data: session, isPending } = useSession();
@@ -24,6 +24,11 @@ export function ProtectedRoute() {
 
   if (!session?.user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  const user = session.user as AuthUser;
+  if (user.isActive === false) {
+    return <Navigate to="/login" state={{ error: 'Account has been deactivated' }} replace />;
   }
 
   return <Outlet />;

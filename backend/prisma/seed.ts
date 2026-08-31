@@ -7,6 +7,12 @@ dotenv.config();
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_PRODUCTION_SEED) {
+    console.error('🛑 FATAL: Database seeding is disabled in production to prevent accidental data loss.');
+    console.error('To force seed, set ALLOW_PRODUCTION_SEED=true in your environment.');
+    process.exit(1);
+  }
+
   console.log('🌱 Starting database seeding...');
 
   // 1. Clean existing data

@@ -38,6 +38,17 @@ export const auth = betterAuth({
       maxAge: 5 * 60, // 5 minutes
     },
   },
+  rateLimit: {
+    enabled: true,
+    window: 10,
+    max: 100,
+    customRules: {
+      '/sign-in/email': {
+        window: 60,
+        max: 5,
+      },
+    },
+  },
 });
 
 export type Auth = typeof auth;

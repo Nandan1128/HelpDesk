@@ -27,6 +27,9 @@ export function AdminRoute() {
   }
 
   const user = session.user as AuthUser;
+  if (user.isActive === false) {
+    return <Navigate to="/login" state={{ error: 'Account has been deactivated' }} replace />;
+  }
   if (user.role !== 'ADMIN') {
     return <Navigate to="/" replace />;
   }

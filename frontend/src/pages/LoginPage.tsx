@@ -233,54 +233,57 @@ export function LoginPage() {
               </Button>
             </form>
 
-            {/* Separator */}
-            <div className="relative py-2">
-              <Separator />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-card px-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Quick Demo Accounts
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Demo Credentials */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fillDemoAccount('admin@ticketai.local', 'AdminPassword123!')}
-                className="h-auto py-2.5 px-3 flex items-center justify-start text-left gap-2.5 border-border hover:bg-accent/50 cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-md bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
-                  <Shield className="w-4 h-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold truncate flex items-center gap-1">
-                    <span>Admin</span>
-                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Full</Badge>
+            {/* Quick Demo Credentials (Development Only) */}
+            {import.meta.env.DEV && (
+              <>
+                <div className="relative py-2">
+                  <Separator />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="bg-card px-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      Quick Demo Accounts (Dev Only)
+                    </span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground truncate">admin@ticketai.local</div>
                 </div>
-              </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fillDemoAccount('sarah.agent@ticketai.local', 'AgentPassword123!')}
-                className="h-auto py-2.5 px-3 flex items-center justify-start text-left gap-2.5 border-border hover:bg-accent/50 cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-md bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
-                  <Headphones className="w-4 h-4" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fillDemoAccount('admin@ticketai.local', 'AdminPassword123!')}
+                    className="h-auto py-2.5 px-3 flex items-center justify-start text-left gap-2.5 border-border hover:bg-accent/50 cursor-pointer"
+                  >
+                    <div className="w-7 h-7 rounded-md bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-semibold truncate flex items-center gap-1">
+                        <span>Admin</span>
+                        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Full</Badge>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground truncate">admin@ticketai.local</div>
+                    </div>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fillDemoAccount('sarah.agent@ticketai.local', 'AgentPassword123!')}
+                    className="h-auto py-2.5 px-3 flex items-center justify-start text-left gap-2.5 border-border hover:bg-accent/50 cursor-pointer"
+                  >
+                    <div className="w-7 h-7 rounded-md bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                      <Headphones className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-semibold truncate flex items-center gap-1">
+                        <span>Agent</span>
+                        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Queue</Badge>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground truncate">sarah.agent@...</div>
+                    </div>
+                  </Button>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold truncate flex items-center gap-1">
-                    <span>Agent</span>
-                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Queue</Badge>
-                  </div>
-                  <div className="text-[10px] text-muted-foreground truncate">sarah.agent@...</div>
-                </div>
-              </Button>
-            </div>
+              </>
+            )}
           </CardContent>
 
           <CardFooter className="justify-center border-t py-4 text-center text-xs text-muted-foreground">
