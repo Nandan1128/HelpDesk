@@ -6,6 +6,7 @@ import {
   Shield,
   Headphones,
   LayoutDashboard,
+  Users,
   Ticket,
   BookOpen,
   Loader2,
@@ -80,6 +81,19 @@ export function Navbar() {
                 <LayoutDashboard className="w-4 h-4 mr-2" />
                 Dashboard
               </Link>
+              {isAdmin && (
+                <Link
+                  to="/users"
+                  className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    location.pathname === '/users'
+                      ? 'bg-muted text-foreground font-semibold shadow-xs'
+                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                  }`}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Users
+                </Link>
+              )}
               <span
                 className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground/50 cursor-not-allowed"
                 title="Available in Phase 4"

@@ -108,6 +108,7 @@ Run `bun run db:seed` to populate the following default accounts (also accessibl
 * **Client SDK (`frontend/src/lib/auth-client.ts`):** React integration with Better Auth (`signIn`, `signOut`, `useSession`).
 * **Route Guards:**
   * `<ProtectedRoute>` — Guards dashboard/ticket views; redirects unauthenticated users to `/login`.
+  * `<AdminRoute>` — Restricts admin-only views (e.g. `/users`); redirects non-admin users to `/` and unauthenticated users to `/login`.
   * `<PublicRoute>` — Prevents logged-in agents from revisiting the login page.
 * **Login Form Features (`frontend/src/pages/LoginPage.tsx`):**
   * Built with **shadcn/ui** (`Card`, `Input`, `Label`, `Button`, `Alert`, `Badge`, `Separator`).
@@ -151,11 +152,15 @@ VITE_API_URL="http://localhost:5000"
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── ui/            # shadcn UI primitives (Button, Card, Input, Label, Alert, Badge, Separator)
+│   │   │   ├── AdminRoute.tsx # Route guard enforcing ADMIN role
+│   │   │   ├── ProtectedRoute.tsx # Route guard enforcing active session
+│   │   │   ├── PublicRoute.tsx    # Route guard for unauthenticated users
 │   │   │   ├── Layout.tsx     # App shell with Navbar & Footer
-│   │   │   └── Navbar.tsx     # App header & session controls
+│   │   │   └── Navbar.tsx     # App header & role-based session controls
 │   │   ├── pages/
 │   │   │   ├── LoginPage.tsx  # shadcn-powered login form with validation
-│   │   │   └── HomePage.tsx   # Dashboard overview with live diagnostics
+│   │   │   ├── HomePage.tsx   # Dashboard overview with live diagnostics
+│   │   │   └── UsersPage.tsx  # User management view (admin only)
 │   │   ├── lib/
 │   │   │   ├── auth-client.ts # Better Auth client instance
 │   │   │   └── utils.ts       # cn() class utility

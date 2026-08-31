@@ -19,7 +19,7 @@
 
 ## Phase 3: User Management
 
-- [ ] Create user management page (admin only)
+- [x] Create user management page (admin only)
 - [ ] Implement create agent API endpoint
 - [ ] Implement list users API endpoint
 - [ ] Implement edit user API endpoint
