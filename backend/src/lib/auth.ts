@@ -12,6 +12,7 @@ export const auth = betterAuth({
   trustedOrigins: [env.FRONTEND_URL, 'http://localhost:5000', 'http://127.0.0.1:5000'],
   emailAndPassword: {
     enabled: true,
+    disableSignUp: true,
     requireEmailVerification: false,
     minPasswordLength: 8,
   },
