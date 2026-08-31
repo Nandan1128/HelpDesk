@@ -1,6 +1,6 @@
 import { PrismaClient, Role, TicketStatus, TicketCategory, Priority, SenderType } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
+import { auth } from '../src/lib/auth.js';
 
 dotenv.config();
 
@@ -14,19 +14,30 @@ async function main() {
   await prisma.ticket.deleteMany();
   await prisma.knowledgeBaseArticle.deleteMany();
   await prisma.session.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.verification.deleteMany();
   await prisma.user.deleteMany();
 
   // 2. Seed Default Admin User
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@ticketai.local';
   const adminPassword = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
   const adminName = process.env.ADMIN_NAME || 'System Administrator';
-  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
 
-  const admin = await prisma.user.create({
-    data: {
+  const adminAuthRes = await auth.api.signUpEmail({
+    body: {
       email: adminEmail,
+      password: adminPassword,
       name: adminName,
-      passwordHash: adminPasswordHash,
+    },
+  });
+
+  if (!adminAuthRes?.user) {
+    throw new Error('Failed to create Admin user via Better Auth');
+  }
+
+  const admin = await prisma.user.update({
+    where: { id: adminAuthRes.user.id },
+    data: {
       role: Role.ADMIN,
       isActive: true,
     },
@@ -34,27 +45,36 @@ async function main() {
   console.log(`✅ Created Admin User: ${admin.email}`);
 
   // 3. Seed Sample Support Agents
-  const agentPasswordHash = await bcrypt.hash('AgentPassword123!', 10);
-
-  const agent1 = await prisma.user.create({
-    data: {
+  const agent1AuthRes = await auth.api.signUpEmail({
+    body: {
       email: 'sarah.agent@ticketai.local',
       name: 'Sarah Connor',
-      passwordHash: agentPasswordHash,
-      role: Role.AGENT,
-      isActive: true,
+      password: 'AgentPassword123!',
     },
   });
 
-  const agent2 = await prisma.user.create({
-    data: {
+  const agent2AuthRes = await auth.api.signUpEmail({
+    body: {
       email: 'alex.agent@ticketai.local',
       name: 'Alex Rivera',
-      passwordHash: agentPasswordHash,
-      role: Role.AGENT,
-      isActive: true,
+      password: 'AgentPassword123!',
     },
   });
+
+  if (!agent1AuthRes?.user || !agent2AuthRes?.user) {
+    throw new Error('Failed to create support agents via Better Auth');
+  }
+
+  const agent1 = await prisma.user.update({
+    where: { id: agent1AuthRes.user.id },
+    data: { role: Role.AGENT, isActive: true },
+  });
+
+  const agent2 = await prisma.user.update({
+    where: { id: agent2AuthRes.user.id },
+    data: { role: Role.AGENT, isActive: true },
+  });
+
   console.log(`✅ Created Support Agents: ${agent1.email}, ${agent2.email}`);
 
   // 4. Seed Knowledge Base Articles
