@@ -143,36 +143,83 @@ VITE_API_URL="/api"
 
 ---
 
-## 🧪 End-to-End Testing (Playwright)
+## 🤖 E2E Testing with `playwright-tester` Subagent
 
-The project includes an end-to-end testing suite configured with **Playwright** and an **isolated PostgreSQL database (`helpdesk_test`)**.
+This repository includes a dedicated Antigravity subagent, **[`playwright-tester`](.agents/agents/playwright-tester/agent.md)**, specialized in authoring, organizing, running, and debugging Playwright end-to-end tests against the isolated `helpdesk_test` PostgreSQL database.
 
-### 1. Key Test Features
-* **Isolated Test Database:** All tests run against `helpdesk_test` without touching or polluting development data.
-* **Automatic Provisioning & Migration:** Playwright global setup automatically verifies the database exists, runs Prisma schema pushes, and seeds baseline test users.
-* **Multi-Server Orchestration:** Playwright automatically starts both the test backend (port `5001`, `NODE_ENV=test`) and the frontend (port `5173` proxying to `5001`).
-* **Rate Limiting Exemption:** API and auth rate limiters are active only in production, ensuring fast and unblocked test runs.
+---
 
-### 2. Test Commands
+### 1. How to Use `playwright-tester` to Write Tests
 
-```bash
-# Run Playwright tests headlessly
-bun run test:e2e
+You can delegate any test-writing task directly in your chat prompt by asking `playwright-tester` to create tests for specific features or user journeys.
 
-# Run Playwright in Interactive UI mode
-bun run test:e2e:ui
+#### Example Prompts:
+* **Authentication Flows:**
+  > *"Use `playwright-tester` to write an E2E test in `e2e/auth.spec.ts` covering valid login, invalid credentials with error banner, and sign-out."*
+* **Role-Based Access Control (RBAC):**
+  > *"Use `playwright-tester` to write tests verifying that support agents cannot access `/users` (admin-only) and get redirected to the dashboard."*
+* **Page Object Model (POM) Scaffolding:**
+  > *"Use `playwright-tester` to create a `LoginPage` Page Object under `e2e/pages/LoginPage.ts` and refactor the auth tests to use it."*
+* **CRUD & Ticket Workflows:**
+  > *"Use `playwright-tester` to write tests for creating and filtering tickets, seeding custom test fixtures before each test."*
+* **Full Verification:**
+  > *"Use `playwright-tester` to write tests for the User Management page and execute `bun run test:e2e` to verify everything passes."*
 
-# Run Playwright in Debug mode with inspector
-bun run test:e2e:debug
+---
 
-# View test report
-bun run test:e2e:report
+### 2. Test Authoring Workflow Followed by the Agent
 
-# Standalone test database management
-bun run db:test:setup  # Ensure DB exists, sync schema, seed
-bun run db:test:reset  # Drop, recreate, sync schema, and re-seed
-bun run db:test:seed   # Re-seed test database
+When you ask `playwright-tester` to write tests, it automatically follows these best practices:
+
+1. **Page Object Model (POM):**
+   * Encapsulates UI elements and reusable actions inside `e2e/pages/<PageName>.ts`.
+2. **Database Isolation & State Seeding:**
+   * Uses `seedTestDatabase()` from `e2e/support/db.ts` in `test.beforeEach()` to ensure every test runs against a clean, known state in `helpdesk_test`.
+   * Leverages pre-configured credentials in `TEST_USERS` (`admin`, `agent1`, `agent2`).
+3. **Resilient, User-Centric Locators:**
+   * Prioritizes accessible selectors: `page.getByRole()`, `page.getByLabel()`, `page.getByPlaceholder()`, `page.getByText()`.
+   * Avoids brittle XPath, deep CSS selectors, and hardcoded sleep timers (`page.waitForTimeout`).
+4. **Web-First Assertions:**
+   * Uses auto-waiting assertions like `await expect(locator).toBeVisible()` and `await expect(page).toHaveURL()`.
+5. **Autonomous Verification:**
+   * Executes the newly created tests (`bun x playwright test <file>`) and inspects traces/screenshots if any test needs adjustments.
+
+---
+
+### 3. Test Structure Reference
+
+When `playwright-tester` generates a new test file in `e2e/`, it structures it as follows:
+
+```typescript
+import { test, expect } from '@playwright/test';
+import { seedTestDatabase, TEST_USERS } from './support/db';
+
+test.describe('Admin User Management', () => {
+  test.beforeEach(async () => {
+    // Reset and seed the isolated helpdesk_test database
+    await seedTestDatabase();
+  });
+
+  test('should allow admin to sign in and view user management', async ({ page }) => {
+    // 1. Navigate to login
+    await page.goto('/login');
+
+    // 2. Fill credentials using pre-seeded test admin
+    await page.getByLabel('Email').fill(TEST_USERS.admin.email);
+    await page.getByLabel('Password').fill(TEST_USERS.admin.password);
+    await page.getByRole('button', { name: /sign in/i }).click();
+
+    // 3. Verify successful authentication
+    await expect(page).toHaveURL('/');
+
+    // 4. Navigate to admin-only user management
+    await page.goto('/users');
+    await expect(page.getByRole('heading', { name: /user management/i })).toBeVisible();
+  });
+});
 ```
+
+Full agent configuration and extended runbooks are maintained in [`.agents/agents/playwright-tester/agent.md`](.agents/agents/playwright-tester/agent.md).
 
 ---
 
