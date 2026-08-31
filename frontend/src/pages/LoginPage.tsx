@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   Bot,
   Mail,
@@ -14,36 +17,48 @@ import {
 } from 'lucide-react';
 import { signIn } from '../lib/auth-client';
 
+const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email address is required')
+    .email('Please enter a valid email address'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(8, 'Password must be at least 8 characters'),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+    mode: 'onTouched',
+  });
+
+  const onSubmit = async (values: LoginFormValues) => {
     setErrorMessage(null);
-
-    if (!email.trim()) {
-      setErrorMessage('Please enter your email address.');
-      return;
-    }
-    if (!password) {
-      setErrorMessage('Please enter your password.');
-      return;
-    }
-
-    setIsLoading(true);
 
     try {
       const response = await signIn.email({
-        email: email.trim(),
-        password,
+        email: values.email.trim(),
+        password: values.password,
       });
 
       if (response.error) {
@@ -57,14 +72,12 @@ export function LoginPage() {
       setErrorMessage(
         err?.message || 'An unexpected error occurred while connecting to the server.'
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const fillDemoAccount = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
+    setValue('email', demoEmail, { shouldValidate: true, shouldDirty: true });
+    setValue('password', demoPass, { shouldValidate: true, shouldDirty: true });
     setErrorMessage(null);
   };
 
@@ -107,7 +120,7 @@ export function LoginPage() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
             {/* Email Field */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
@@ -119,14 +132,22 @@ export function LoginPage() {
                 </div>
                 <input
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  {...register('email')}
                   placeholder="agent@ticketai.local"
-                  required
                   autoComplete="email"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                  className={`w-full pl-10 pr-4 py-2.5 bg-slate-950/60 border rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 transition-colors ${
+                    errors.email
+                      ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/30'
+                      : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/50'
+                  }`}
                 />
               </div>
+              {errors.email && (
+                <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{errors.email.message}</span>
+                </p>
+              )}
             </div>
 
             {/* Password Field */}
@@ -142,12 +163,14 @@ export function LoginPage() {
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  {...register('password')}
                   placeholder="••••••••"
-                  required
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-11 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors"
+                  className={`w-full pl-10 pr-11 py-2.5 bg-slate-950/60 border rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 transition-colors ${
+                    errors.password
+                      ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/30'
+                      : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/50'
+                  }`}
                 />
                 <button
                   type="button"
@@ -158,15 +181,21 @@ export function LoginPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{errors.password.message}</span>
+                </p>
+              )}
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="w-full mt-2 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-lg shadow-blue-600/30 hover:shadow-blue-500/40 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
             >
-              {isLoading ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
                   <span>Signing In...</span>
