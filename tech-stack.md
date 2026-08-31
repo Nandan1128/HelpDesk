@@ -79,6 +79,18 @@ The system follows a decoupled Client-Server architecture:
   * Deployed Backend web service and Frontend static service
   * Environment variable management (Database URLs, Gemini API keys, Email credentials)
 
+### 2.8 Testing, Test Database Isolation & Rate Limiting Strategy
+* **End-to-End Testing Framework:** **Playwright** (`@playwright/test`)
+  * Multi-server orchestration: Automatically manages isolated backend (port `5001` with `NODE_ENV=test`) and frontend (port `5173` proxying to test backend).
+  * Global setup & teardown lifecycle: Automated database creation, schema sync via Prisma, and test data seeding.
+* **Test Database Isolation:**
+  * Dedicated PostgreSQL database: `helpdesk_test` (completely isolated from development and production databases).
+  * Environment configuration: `.env.test` loaded dynamically in test environments.
+  * DB utilities: Automated reset and seeding scripts (`setup-test-db.ts`, `e2e/support/db.ts`).
+* **Rate Limiting Policy:**
+  * Active **strictly in production** (`NODE_ENV === 'production'`).
+  * Express API limiters and Better Auth authentication rate limits are bypassed during development and automated E2E testing to ensure fast, unblocked execution.
+
 ---
 
 ## 3. High-Level Data Flow

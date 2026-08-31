@@ -5,13 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/index.ts",
+    "dev:test": "bun --env-file=.env.test --watch src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target node",
     "start": "bun dist/index.js",
+    "start:test": "bun --env-file=.env.test dist/index.js",
     "db:migrate": "bun x prisma migrate dev",
     "db:generate": "bun x prisma generate",
     "db:seed": "bun prisma/seed.ts",
     "db:studio": "bun x prisma studio",
-    "db:push": "bun x prisma db push"
+    "db:push": "bun x prisma db push",
+    "db:test:setup": "bun scripts/setup-test-db.ts",
+    "db:test:reset": "bun scripts/setup-test-db.ts --reset",
+    "db:test:seed": "bun scripts/setup-test-db.ts --seed"
   },
   "prisma": {
     "seed": "bun prisma/seed.ts"

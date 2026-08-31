@@ -23,24 +23,30 @@ app.use(
   })
 );
 
-// General API Rate Limiter
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // Limit each IP to 300 requests per 15 minutes
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' },
-});
+// Rate Limiters (Enabled only in production)
+if (env.NODE_ENV === 'production') {
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 300, // Limit each IP to 300 requests per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' },
+  });
+  app.use('/api', apiLimiter);
+}
 
-// Dedicated Healthcheck Rate Limiter to prevent DB connection exhaustion
-const healthLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 60, // 60 requests per minute
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use('/api', apiLimiter);
+// Dedicated Healthcheck Rate Limiter in production to prevent DB connection exhaustion
+const healthMiddlewares =
+  env.NODE_ENV === 'production'
+    ? [
+        rateLimit({
+          windowMs: 1 * 60 * 1000, // 1 minute
+          max: 60, // 60 requests per minute
+          standardHeaders: true,
+          legacyHeaders: false,
+        }),
+      ]
+    : [];
 
 app.use(
   cors({
@@ -56,7 +62,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Basic Healthcheck & DB ping
-app.get('/api/health', healthLimiter, async (req, res) => {
+app.get('/api/health', ...healthMiddlewares, async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({

@@ -1,5 +1,22 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 import { z } from 'zod';
+
+// Load .env.test if in test environment
+if (process.env.NODE_ENV === 'test') {
+  const possibleTestEnvPaths = [
+    path.resolve(process.cwd(), '.env.test'),
+    path.resolve(process.cwd(), 'backend', '.env.test'),
+    path.resolve(process.cwd(), '..', '.env.test'),
+  ];
+  for (const envPath of possibleTestEnvPaths) {
+    if (fs.existsSync(envPath)) {
+      dotenv.config({ path: envPath });
+      break;
+    }
+  }
+}
 
 dotenv.config();
 

@@ -119,8 +119,8 @@ Run `bun run db:seed` to populate the following default accounts (also accessibl
 ### 6. Required Environment Variables
 
 ```env
-# backend/.env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ticket_system?schema=public"
+# backend/.env (Development)
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/helpdesk?schema=public"
 PORT=5000
 BETTER_AUTH_SECRET="your-secure-random-secret-key-min-32-chars"
 BETTER_AUTH_URL="http://localhost:5000"
@@ -129,8 +129,49 @@ ADMIN_EMAIL="admin@ticketai.local"
 ADMIN_PASSWORD="AdminPassword123!"
 ADMIN_NAME="System Administrator"
 
+# backend/.env.test (Isolated Testing)
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/helpdesk_test?schema=public"
+PORT=5001
+NODE_ENV=test
+BETTER_AUTH_SECRET="test-secret-key-32-chars-minimum-ticket-ai-test"
+BETTER_AUTH_URL="http://localhost:5001"
+TRUSTED_ORIGINS="http://localhost:5173,http://localhost:5001,http://localhost:5000"
+
 # frontend/.env
-VITE_API_URL="http://localhost:5000"
+VITE_API_URL="/api"
+```
+
+---
+
+## 🧪 End-to-End Testing (Playwright)
+
+The project includes an end-to-end testing suite configured with **Playwright** and an **isolated PostgreSQL database (`helpdesk_test`)**.
+
+### 1. Key Test Features
+* **Isolated Test Database:** All tests run against `helpdesk_test` without touching or polluting development data.
+* **Automatic Provisioning & Migration:** Playwright global setup automatically verifies the database exists, runs Prisma schema pushes, and seeds baseline test users.
+* **Multi-Server Orchestration:** Playwright automatically starts both the test backend (port `5001`, `NODE_ENV=test`) and the frontend (port `5173` proxying to `5001`).
+* **Rate Limiting Exemption:** API and auth rate limiters are active only in production, ensuring fast and unblocked test runs.
+
+### 2. Test Commands
+
+```bash
+# Run Playwright tests headlessly
+bun run test:e2e
+
+# Run Playwright in Interactive UI mode
+bun run test:e2e:ui
+
+# Run Playwright in Debug mode with inspector
+bun run test:e2e:debug
+
+# View test report
+bun run test:e2e:report
+
+# Standalone test database management
+bun run db:test:setup  # Ensure DB exists, sync schema, seed
+bun run db:test:reset  # Drop, recreate, sync schema, and re-seed
+bun run db:test:seed   # Re-seed test database
 ```
 
 ---
@@ -138,14 +179,25 @@ VITE_API_URL="http://localhost:5000"
 ## 📁 Repository Structure
 
 ```
+├── .env.test                  # Root test environment configuration
+├── e2e/                       # Playwright test suite & support utilities
+│   └── support/
+│       ├── db.ts              # Test DB helpers (cleanDatabase, seedTestDatabase, TEST_USERS)
+│       ├── global-setup.ts    # Playwright global lifecycle setup (DB provisioning)
+│       └── global-teardown.ts # Playwright global cleanup
+├── playwright.config.ts       # Playwright multi-server & browser configuration
 ├── backend/
+│   ├── .env.test              # Backend test environment overrides
 │   ├── prisma/
 │   │   ├── schema.prisma      # Database schema (User, Session, Ticket, Message, KB)
 │   │   └── seed.ts            # Seeder for admin, agents, KB articles, sample tickets
+│   ├── scripts/
+│   │   └── setup-test-db.ts   # Automated test database creator & schema synchronizer
 │   ├── src/
-│   │   ├── config/env.ts      # Environment validation with Zod
+│   │   ├── config/env.ts      # Environment validation (loads .env.test when NODE_ENV=test)
 │   │   ├── db/prisma.ts       # Prisma Client singleton
-│   │   └── index.ts           # Express server entry point
+│   │   ├── lib/auth.ts        # Better Auth configuration (production-only rate limiting)
+│   │   └── index.ts           # Express server entry point (production-only rate limiting)
 │   ├── package.json
 │   └── tsconfig.json
 ├── frontend/
@@ -168,7 +220,7 @@ VITE_API_URL="http://localhost:5000"
 │   │   ├── main.tsx           # React entry point
 │   │   └── index.css          # Theme tokens & global styles
 │   ├── components.json        # shadcn configuration
-│   ├── vite.config.ts         # Vite configuration with API proxy
+│   ├── vite.config.ts         # Vite configuration with configurable API proxy target
 │   ├── tailwind.config.js
 │   └── package.json
 ├── docker/

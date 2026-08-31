@@ -39,7 +39,7 @@ export const auth = betterAuth({
     },
   },
   rateLimit: {
-    enabled: true,
+    enabled: env.NODE_ENV === 'production',
     window: 10,
     max: 100,
     customRules: {

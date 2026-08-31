@@ -8,6 +8,9 @@
 - [x] Install and configure **shadcn/ui** with default theme tokens, CSS variables, and components (`Card`, `Input`, `Label`, `Button`, `Alert`, `Badge`, `Separator`)
 - [x] Set up PostgreSQL database with Prisma ORM and pgvector
 - [x] Create database schema, migrations, and seed script
+- [x] Configure Playwright E2E testing framework with multi-server orchestration
+- [x] Set up isolated test database (`helpdesk_test`) with automated provisioning, schema sync, and test seeding
+- [x] Configure production-only rate limiting policy across Express API and Better Auth
 
 ## Phase 2: Authentication & Design System
 
