@@ -143,6 +143,73 @@ VITE_API_URL="/api"
 
 ---
 
+## 📡 Frontend API & Data Fetching Guidelines (Axios & React Query)
+
+All frontend data fetching and mutations should follow these standardized guidelines using **Axios** and **TanStack React Query**:
+
+### 1. Centralized Axios API Client (`frontend/src/lib/api.ts`)
+* Always import and use the pre-configured `api` instance from `@/lib/api` rather than native `fetch()` or raw unconfigured `axios`.
+* **Automatic Cookie Transmission:** `withCredentials: true` is enabled by default so Better Auth session cookies are sent on every request.
+* **Unified Error Normalization:** Axios response interceptors extract server error messages (`response.data.error` or `response.data.message`) automatically.
+
+```typescript
+import { api } from '@/lib/api';
+
+// GET request
+const { data } = await api.get<UserListResponse>('/api/users', { params });
+
+// POST request
+const { data } = await api.post('/api/tickets', newTicketData);
+```
+
+### 2. State Management with TanStack React Query
+Use `@tanstack/react-query` hooks (`useQuery`, `useMutation`, `useQueryClient`) for managing all server state, caching, pagination, and optimistic updates.
+
+#### Querying Data (`useQuery`):
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+
+export function useUsers(filters: { search?: string; role?: string; status?: string }) {
+  return useQuery({
+    queryKey: ['users', filters],
+    queryFn: async () => {
+      const response = await api.get<UserListResponse>('/api/users', { params: filters });
+      return response.data;
+    },
+    staleTime: 1000 * 60, // 1 minute
+  });
+}
+```
+
+#### Mutating Data (`useMutation`):
+```typescript
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+
+export function useCreateTicket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ticketData: CreateTicketInput) => {
+      const response = await api.post('/api/tickets', ticketData);
+      return response.data;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch ticket queries
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+    },
+  });
+}
+```
+
+### 3. Core Principles
+* **No Raw `fetch()`:** Avoid `fetch()` for backend API requests to ensure consistent auth headers, credentials, base URL proxying, and error handling.
+* **Declarative Loading & Error States:** Utilize React Query's `isLoading`, `isError`, `error`, and `refetch` properties to drive shadcn skeleton and alert states.
+* **Cache Invalidation:** Always invalidate related query keys after successful mutations (`POST`, `PUT`, `PATCH`, `DELETE`) to keep UI in sync.
+
+---
+
 ## 🤖 E2E Testing with `playwright-tester` Subagent
 
 This repository includes a dedicated Antigravity subagent, **[`playwright-tester`](.agents/agents/playwright-tester/agent.md)**, specialized in authoring, organizing, running, and debugging Playwright end-to-end tests against the isolated `helpdesk_test` PostgreSQL database.
@@ -244,13 +311,15 @@ Full agent configuration and extended runbooks are maintained in [`.agents/agent
 │   │   ├── config/env.ts      # Environment validation (loads .env.test when NODE_ENV=test)
 │   │   ├── db/prisma.ts       # Prisma Client singleton
 │   │   ├── lib/auth.ts        # Better Auth configuration (production-only rate limiting)
+│   │   ├── middleware/        # Auth & RBAC Express middleware
+│   │   ├── routes/            # API Route handlers (user.routes.ts)
 │   │   └── index.ts           # Express server entry point (production-only rate limiting)
 │   ├── package.json
 │   └── tsconfig.json
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── ui/            # shadcn UI primitives (Button, Card, Input, Label, Alert, Badge, Separator)
+│   │   │   ├── ui/            # shadcn UI primitives (Button, Card, Input, Label, Alert, Badge, Separator, Table)
 │   │   │   ├── AdminRoute.tsx # Route guard enforcing ADMIN role
 │   │   │   ├── ProtectedRoute.tsx # Route guard enforcing active session
 │   │   │   ├── PublicRoute.tsx    # Route guard for unauthenticated users
@@ -261,6 +330,7 @@ Full agent configuration and extended runbooks are maintained in [`.agents/agent
 │   │   │   ├── HomePage.tsx   # Dashboard overview with live diagnostics
 │   │   │   └── UsersPage.tsx  # User management view (admin only)
 │   │   ├── lib/
+│   │   │   ├── api.ts         # Pre-configured Axios instance with credentials & interceptors
 │   │   │   ├── auth-client.ts # Better Auth client instance
 │   │   │   └── utils.ts       # cn() class utility
 │   │   ├── App.tsx            # Route definitions
