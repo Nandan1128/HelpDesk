@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { z } from 'zod';
 
-// Load .env.test if in test environment
+// Load .env.test if in test environment, otherwise load default .env
 if (process.env.NODE_ENV === 'test') {
   const possibleTestEnvPaths = [
     path.resolve(process.cwd(), '.env.test'),
@@ -12,13 +12,13 @@ if (process.env.NODE_ENV === 'test') {
   ];
   for (const envPath of possibleTestEnvPaths) {
     if (fs.existsSync(envPath)) {
-      dotenv.config({ path: envPath });
+      dotenv.config({ path: envPath, override: true });
       break;
     }
   }
+} else {
+  dotenv.config();
 }
-
-dotenv.config();
 
 const envSchema = z
   .object({

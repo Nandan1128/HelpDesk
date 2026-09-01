@@ -153,7 +153,7 @@ export async function setupTestDatabase(options: { reset?: boolean; seed?: boole
 }
 
 // Allow direct execution from CLI: bun backend/scripts/setup-test-db.ts [--reset] [--no-seed]
-const isCLI = import.meta.main || process.argv[1]?.endsWith('setup-test-db.ts');
+const isCLI = Boolean(process.argv[1] && (process.argv[1].endsWith('setup-test-db.ts') || process.argv[1].endsWith('setup-test-db.js')));
 if (isCLI) {
   const args = process.argv.slice(2);
   const reset = args.includes('--reset');

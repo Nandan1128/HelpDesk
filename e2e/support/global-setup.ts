@@ -16,7 +16,7 @@ export default async function globalSetup(config: FullConfig) {
 
   // Initialize and seed the isolated test database
   try {
-    await setupTestDatabase({ reset: true, seed: true });
+    await setupTestDatabase({ reset: false, seed: true });
     console.log('✅ [Playwright Global Setup] Test database initialized successfully.\n');
   } catch (error) {
     console.error('❌ [Playwright Global Setup] Failed to initialize test database:', error);

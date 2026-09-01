@@ -36,15 +36,19 @@ async function createUserWithPassword(data: {
       role: data.role,
       isActive: data.isActive ?? true,
       emailVerified: true,
-      accounts: {
-        create: {
-          accountId: data.email,
-          providerId: 'credential',
-          password: hashedPassword,
-        },
-      },
     },
   });
+
+  await prisma.account.create({
+    data: {
+      accountId: user.id,
+      userId: user.id,
+      providerId: 'credential',
+      issuer: 'local:credential',
+      password: hashedPassword,
+    },
+  });
+
   return user;
 }
 

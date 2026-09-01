@@ -19,7 +19,7 @@ export function getTestPrismaClient(): PrismaClient {
     testPrisma = new PrismaClient({
       datasources: {
         db: {
-          url: process.env.DATABASE_URL || 'postgresql://postgres:postgrespassword@localhost:5432/helpdesk_test?schema=public',
+          url: process.env.DATABASE_URL || 'postgresql://postgres:Npg%402003@localhost:5432/helpdesk_test?schema=public',
         },
       },
     });
@@ -78,22 +78,27 @@ export async function seedTestDatabase(prisma: PrismaClient = getTestPrismaClien
   // Helper to create user with credentials
   async function createTestUser(user: TestUserData) {
     const hashedPassword = await hashPassword(user.password);
-    return prisma.user.create({
+    const createdUser = await prisma.user.create({
       data: {
         email: user.email,
         name: user.name,
         role: user.role,
         isActive: user.isActive ?? true,
         emailVerified: true,
-        accounts: {
-          create: {
-            accountId: user.email,
-            providerId: 'credential',
-            password: hashedPassword,
-          },
-        },
       },
     });
+
+    await prisma.account.create({
+      data: {
+        accountId: createdUser.id,
+        userId: createdUser.id,
+        providerId: 'credential',
+        issuer: 'local:credential',
+        password: hashedPassword,
+      },
+    });
+
+    return createdUser;
   }
 
   const admin = await createTestUser(TEST_USERS.admin);

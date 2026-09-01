@@ -1,4 +1,5 @@
 import { createAuthClient } from 'better-auth/react';
+import { inferAdditionalFields } from 'better-auth/client/plugins';
 
 export interface AuthUser {
   id: string;
@@ -25,6 +26,18 @@ const getBaseURL = (): string => {
 
 export const authClient = createAuthClient({
   baseURL: getBaseURL(),
+  plugins: [
+    inferAdditionalFields({
+      user: {
+        role: {
+          type: 'string',
+        },
+        isActive: {
+          type: 'boolean',
+        },
+      },
+    }),
+  ],
 });
 
 export const {

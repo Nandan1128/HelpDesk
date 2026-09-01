@@ -2,6 +2,7 @@
   "name": "ai-ticket-management-system",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "AI-Powered Ticket Management System with Express, React, TypeScript, Bun, Prisma, PostgreSQL, and Google Gemini",
   "scripts": {
     "dev": "concurrently \"bun run dev:backend\" \"bun run dev:frontend\"",
@@ -17,10 +18,10 @@
     "db:test:setup": "cd backend && bun run db:test:setup",
     "db:test:reset": "cd backend && bun run db:test:reset",
     "db:test:seed": "cd backend && bun run db:test:seed",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e": "bun run db:test:setup && playwright test",
+    "test:e2e:ui": "bun run db:test:setup && playwright test --ui",
+    "test:e2e:debug": "bun run db:test:setup && playwright test --debug",
+    "test:e2e:report": "playwright show-report e2e/playwright-report"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

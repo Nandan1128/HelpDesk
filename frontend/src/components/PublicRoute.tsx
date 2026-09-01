@@ -1,9 +1,10 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Bot, Loader2 } from 'lucide-react';
 import { useSession } from '../lib/auth-client';
 
 export function PublicRoute() {
   const { data: session, isPending } = useSession();
+  const location = useLocation();
 
   if (isPending) {
     return (
@@ -22,7 +23,8 @@ export function PublicRoute() {
   }
 
   if (session?.user) {
-    return <Navigate to="/" replace />;
+    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+    return <Navigate to={from} replace />;
   }
 
   return <Outlet />;

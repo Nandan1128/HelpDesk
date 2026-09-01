@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load .env.test for test configuration
 const envPath = fs.existsSync(path.resolve(__dirname, '.env.test'))
@@ -17,22 +21,26 @@ const FRONTEND_URL = `http://localhost:${FRONTEND_PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
+  outputDir: './e2e/test-results',
   timeout: 30 * 1000,
   expect: {
     timeout: 5000,
   },
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: [
     ['list'],
-    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    ['html', { open: 'never', outputFolder: 'e2e/playwright-report' }],
   ],
   globalSetup: path.resolve(__dirname, 'e2e/support/global-setup.ts'),
   globalTeardown: path.resolve(__dirname, 'e2e/support/global-teardown.ts'),
   use: {
     baseURL: FRONTEND_URL,
+    extraHTTPHeaders: {
+      Origin: FRONTEND_URL,
+    },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

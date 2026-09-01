@@ -6,7 +6,7 @@ export function AdminRoute() {
   const { data: session, isPending } = useSession();
   const location = useLocation();
 
-  if (isPending) {
+  if (isPending || (session?.user && !(session.user as AuthUser).role)) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground">
         <div className="flex flex-col items-center space-y-4">
