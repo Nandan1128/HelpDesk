@@ -3,10 +3,10 @@ import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'ax
 /**
  * Pre-configured Axios instance for application-wide API requests.
  * - withCredentials: true ensures Better Auth session cookies are sent automatically.
- * - baseURL: uses VITE_API_URL or defaults to root (proxy handles /api in dev).
+ * - baseURL: defaults to '/api' (or VITE_API_URL if specified).
  */
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -14,9 +14,15 @@ export const api = axios.create({
   timeout: 15000,
 });
 
-// Request interceptor
+// Request interceptor: normalize URL to prevent duplicate /api prefixes
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // If baseURL ends with '/api' and config.url starts with '/api' (e.g., '/api/users'),
+    // strip the leading '/api' from url so it resolves to '/api/users' instead of '/api/api/users'.
+    const baseEndsWithApi = config.baseURL ? /\/api\/?$/.test(config.baseURL) : false;
+    if (baseEndsWithApi && config.url && config.url.startsWith('/api')) {
+      config.url = config.url.replace(/^\/api/, '') || '/';
+    }
     return config;
   },
   (error: AxiosError) => {
@@ -24,22 +30,31 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for unified error extraction
+// Response interceptor: safely extract and normalize error messages
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
-  (error: AxiosError<{ error?: string; message?: string }>) => {
-    // Standardize error message from backend if available
-    const customMessage =
-      error.response?.data?.error ||
-      error.response?.data?.message ||
-      error.message ||
-      'An unexpected network error occurred';
+  (error: AxiosError) => {
+    let customMessage = 'An unexpected network error occurred';
 
-    // Attach human-readable message to error object
-    if (error.response && error.response.data) {
-      error.response.data.error = customMessage;
+    if (error.response?.data) {
+      if (typeof error.response.data === 'object' && error.response.data !== null) {
+        const data = error.response.data as { error?: string; message?: string };
+        customMessage = data.error || data.message || customMessage;
+        data.error = customMessage;
+      } else if (typeof error.response.data === 'string') {
+        // Handles HTML error responses (e.g., Express 404/500 default pages)
+        if (error.response.status === 404) {
+          customMessage = `API endpoint not found (404): ${error.config?.url || ''}`;
+        } else {
+          customMessage = error.response.statusText || `Server error (${error.response.status})`;
+        }
+        // Normalize response.data into structured object
+        error.response.data = { error: customMessage };
+      }
+    } else if (error.message) {
+      customMessage = error.message;
     }
 
     return Promise.reject(error);

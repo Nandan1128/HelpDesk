@@ -102,7 +102,7 @@ export function UsersPage() {
         params.status = 'inactive';
       }
 
-      const response = await api.get<UserListResponse>('/api/users', {
+      const response = await api.get<UserListResponse>('/users', {
         params,
       });
 

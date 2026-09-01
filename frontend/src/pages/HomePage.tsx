@@ -40,7 +40,7 @@ export function HomePage() {
 
   useEffect(() => {
     api
-      .get<HealthStatus>('/api/health')
+      .get<HealthStatus>('/health')
       .then((res) => {
         setHealth(res.data);
         setHealthError(null);
