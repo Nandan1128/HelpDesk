@@ -35,4 +35,9 @@ export class NavbarPage {
       await expect(this.usersLink).not.toBeVisible();
     }
   }
+
+  async navigateToUsers() {
+    await this.usersLink.click();
+    await expect(this.page).toHaveURL('/users');
+  }
 }

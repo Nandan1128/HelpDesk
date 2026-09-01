@@ -12,8 +12,6 @@ import {
   Shield,
   Headphones,
 } from 'lucide-react';
-import axios from 'axios';
-import { useSession, AuthUser } from '../lib/auth-client';
 import {
   Card,
   CardHeader,
@@ -22,6 +20,8 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { api } from '@/lib/api';
+import { useSession, AuthUser } from '../lib/auth-client';
 
 interface HealthStatus {
   status: string;
@@ -39,14 +39,14 @@ export function HomePage() {
   const [healthError, setHealthError] = useState<string | null>(null);
 
   useEffect(() => {
-    axios
+    api
       .get<HealthStatus>('/api/health')
       .then((res) => {
         setHealth(res.data);
         setHealthError(null);
       })
       .catch((err) => {
-        setHealthError(err.message || 'Failed to connect to backend');
+        setHealthError(err.response?.data?.error || err.message || 'Failed to connect to backend');
       })
       .finally(() => {
         setHealthLoading(false);

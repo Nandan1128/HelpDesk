@@ -70,7 +70,15 @@ async function main() {
   await prisma.verification.deleteMany();
   await prisma.user.deleteMany();
 
-  // 2. Seed Default Admin User
+  // 2. Seed Admin Users
+  const adminExample = await createUserWithPassword({
+    email: 'admin@example.com',
+    name: 'Admin',
+    password: 'Password@123',
+    role: Role.ADMIN,
+    isActive: true,
+  });
+
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@ticketai.local';
   const adminPassword = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
   const adminName = process.env.ADMIN_NAME || 'System Administrator';
@@ -82,9 +90,17 @@ async function main() {
     role: Role.ADMIN,
     isActive: true,
   });
-  console.log(`✅ Created Admin User: ${admin.email}`);
+  console.log(`✅ Created Admin Users: ${adminExample.email}, ${admin.email}`);
 
   // 3. Seed Sample Support Agents
+  const agentExample = await createUserWithPassword({
+    email: 'agent1@example.com',
+    name: 'Agent One',
+    password: 'Password@123',
+    role: Role.AGENT,
+    isActive: true,
+  });
+
   const agent1 = await createUserWithPassword({
     email: 'sarah.agent@ticketai.local',
     name: 'Sarah Connor',
@@ -98,10 +114,10 @@ async function main() {
     name: 'Alex Rivera',
     password: 'AgentPassword123!',
     role: Role.AGENT,
-    isActive: true,
+    isActive: false,
   });
 
-  console.log(`✅ Created Support Agents: ${agent1.email}, ${agent2.email}`);
+  console.log(`✅ Created Support Agents: ${agentExample.email}, ${agent1.email}, ${agent2.email} (inactive)`);
 
   // 4. Seed Knowledge Base Articles
   const kbRefund = await prisma.knowledgeBaseArticle.create({

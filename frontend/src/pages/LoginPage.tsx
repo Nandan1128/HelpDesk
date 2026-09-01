@@ -249,7 +249,7 @@ export function LoginPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => fillDemoAccount('admin@ticketai.local', 'AdminPassword123!')}
+                    onClick={() => fillDemoAccount('admin@example.com', 'Password@123')}
                     className="h-auto py-2.5 px-3 flex items-center justify-start text-left gap-2.5 border-border hover:bg-accent/50 cursor-pointer"
                   >
                     <div className="w-7 h-7 rounded-md bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
@@ -258,6 +258,42 @@ export function LoginPage() {
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-semibold truncate flex items-center gap-1">
                         <span>Admin</span>
+                        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Full</Badge>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground truncate">admin@example.com</div>
+                    </div>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fillDemoAccount('agent1@example.com', 'Password@123')}
+                    className="h-auto py-2.5 px-3 flex items-center justify-start text-left gap-2.5 border-border hover:bg-accent/50 cursor-pointer"
+                  >
+                    <div className="w-7 h-7 rounded-md bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+                      <Headphones className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-semibold truncate flex items-center gap-1">
+                        <span>Agent</span>
+                        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Queue</Badge>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground truncate">agent1@example.com</div>
+                    </div>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fillDemoAccount('admin@ticketai.local', 'AdminPassword123!')}
+                    className="h-auto py-2.5 px-3 flex items-center justify-start text-left gap-2.5 border-border hover:bg-accent/50 cursor-pointer"
+                  >
+                    <div className="w-7 h-7 rounded-md bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-semibold truncate flex items-center gap-1">
+                        <span>Admin (Local)</span>
                         <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Full</Badge>
                       </div>
                       <div className="text-[10px] text-muted-foreground truncate">admin@ticketai.local</div>
@@ -275,7 +311,7 @@ export function LoginPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-semibold truncate flex items-center gap-1">
-                        <span>Agent</span>
+                        <span>Agent (Local)</span>
                         <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Queue</Badge>
                       </div>
                       <div className="text-[10px] text-muted-foreground truncate">sarah.agent@...</div>

@@ -1,5 +1,4 @@
 import { PrismaClient, Role, TicketStatus, TicketCategory, Priority, SenderType } from '../../backend/node_modules/@prisma/client/index.js';
-import { hashPassword } from 'better-auth/crypto';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -10,6 +9,10 @@ const envPath = fs.existsSync(path.resolve(process.cwd(), '.env.test'))
   : path.resolve(process.cwd(), 'backend', '.env.test');
 
 dotenv.config({ path: envPath, override: true });
+
+if (!process.env.BETTER_AUTH_SECRET) {
+  process.env.BETTER_AUTH_SECRET = 'test-secret-key-32-chars-minimum-ticket-ai-test';
+}
 
 // Shared test Prisma instance
 let testPrisma: PrismaClient | null = null;
@@ -35,24 +38,37 @@ export interface TestUserData {
   isActive?: boolean;
 }
 
-export const TEST_USERS: Record<'admin' | 'agent1' | 'agent2', TestUserData> = {
+export const TEST_USERS = {
+  adminExample: {
+    email: 'admin@example.com',
+    password: 'Password@123',
+    name: 'Admin',
+    role: Role.ADMIN as Role,
+  },
   admin: {
     email: process.env.ADMIN_EMAIL || 'admin@ticketai.local',
     password: process.env.ADMIN_PASSWORD || 'AdminPassword123!',
     name: process.env.ADMIN_NAME || 'System Administrator',
-    role: Role.ADMIN,
+    role: Role.ADMIN as Role,
+  },
+  agentExample: {
+    email: 'agent1@example.com',
+    password: 'Password@123',
+    name: 'Agent One',
+    role: Role.AGENT as Role,
   },
   agent1: {
     email: 'sarah.agent@ticketai.local',
     password: 'AgentPassword123!',
     name: 'Sarah Connor',
-    role: Role.AGENT,
+    role: Role.AGENT as Role,
   },
   agent2: {
     email: 'alex.agent@ticketai.local',
     password: 'AgentPassword123!',
     name: 'Alex Rivera',
-    role: Role.AGENT,
+    role: Role.AGENT as Role,
+    isActive: false,
   },
 };
 
@@ -77,6 +93,7 @@ export async function seedTestDatabase(prisma: PrismaClient = getTestPrismaClien
 
   // Helper to create user with credentials
   async function createTestUser(user: TestUserData) {
+    const { hashPassword } = await import('better-auth/crypto');
     const hashedPassword = await hashPassword(user.password);
     const createdUser = await prisma.user.create({
       data: {
@@ -101,7 +118,9 @@ export async function seedTestDatabase(prisma: PrismaClient = getTestPrismaClien
     return createdUser;
   }
 
+  const adminExample = await createTestUser(TEST_USERS.adminExample);
   const admin = await createTestUser(TEST_USERS.admin);
+  const agentExample = await createTestUser(TEST_USERS.agentExample);
   const agent1 = await createTestUser(TEST_USERS.agent1);
   const agent2 = await createTestUser(TEST_USERS.agent2);
 

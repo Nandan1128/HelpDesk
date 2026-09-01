@@ -7,6 +7,7 @@ import { env } from './config/env.js';
 import { prisma } from './db/prisma.js';
 import { auth } from './lib/auth.js';
 import { requireAuth, requireRole, AuthenticatedRequest } from './middleware/auth.middleware.js';
+import userRoutes from './routes/user.routes.js';
 
 const app = express();
 
@@ -105,6 +106,9 @@ app.get('/api/admin/ping', requireAuth, requireRole('ADMIN'), (req: Authenticate
     user: req.user,
   });
 });
+
+// User Management Routes (Protected & Admin Only)
+app.use('/api/users', userRoutes);
 
 const server = app.listen(env.PORT, () => {
   console.log(`🚀 TicketAI Backend server running on http://localhost:${env.PORT}`);

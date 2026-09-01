@@ -24,7 +24,7 @@
 
 - [x] Create user management page (admin only)
 - [ ] Implement create agent API endpoint
-- [ ] Implement list users API endpoint
+- [x] Implement list users API endpoint
 - [ ] Implement edit user API endpoint
 - [ ] Implement delete user API endpoint
 - [ ] Add role-based access control (admin vs agent)
