@@ -90,15 +90,21 @@ Run `bun run db:seed` to populate the following default accounts (also accessibl
 | **Support Agent** | `sarah.agent@ticketai.local` | `AgentPassword123!` |
 | **Support Agent** | `alex.agent@ticketai.local` | `AgentPassword123!` |
 
-### 4. API Auth Endpoints & Middleware
+### 4. API Auth & User Management Endpoints
 
 * **Better Auth Router (`/api/auth/*`):**
   * `POST /api/auth/sign-in/email` — Authenticates credentials and issues session cookie.
   * `POST /api/auth/sign-out` — Destroys active session and clears client cookie.
   * `GET /api/auth/get-session` — Returns active session and user profile.
+* **User Management Router (`/api/users`):**
+  * `POST /api/users` — Creates a new user (Admin only; validates name ≥ 3 chars, email, password ≥ 8 chars).
+  * `GET /api/users` — Lists users with search, role, status filtering, sorting, and pagination (Admin only).
+  * `GET /api/users/:id` — Retrieves user details by ID (Admin only).
 * **Express Middleware (`backend/src/middleware/auth.middleware.ts`):**
   * `requireAuth`: Validates session cookie headers; attaches `req.user` and `req.session`.
   * `requireRole('ADMIN' | 'AGENT')`: Enforces RBAC permissions on protected endpoints.
+* **Express 5 Async Error Handling:**
+  * Async route handlers do not require redundant `try/catch` boilerplate for unhandled errors because Express 5 natively catches rejected promises and routes them automatically to the error-handling middleware.
 * **Protected Example Endpoints:**
   * `GET /api/me` — Protected endpoint returning current user and session.
   * `GET /api/admin/ping` — Admin-only endpoint requiring `ADMIN` role.

@@ -126,4 +126,84 @@ test.describe('User Management - User List Page UI (/users)', () => {
       await expect(table.getByText(TEST_USERS.admin.name, { exact: true })).toBeVisible();
     });
   });
+
+  test.describe('Create New User Modal Flow', () => {
+    test('should display Create User button next to Refresh button', async ({ page }) => {
+      const createBtn = page.getByTitle('Create new user');
+      await expect(createBtn).toBeVisible();
+
+      const refreshBtn = page.getByTitle('Refresh user list');
+      await expect(refreshBtn).toBeVisible();
+    });
+
+    test('should open modal with name, email, password fields and close when clicking Cancel', async ({ page }) => {
+      const createBtn = page.getByTitle('Create new user');
+      await createBtn.click();
+
+      const modal = page.getByRole('dialog');
+      await expect(modal).toBeVisible();
+      await expect(modal.getByRole('heading', { name: 'Create New User' })).toBeVisible();
+
+      // Check fields
+      await expect(modal.getByLabel(/full name/i)).toBeVisible();
+      await expect(modal.getByLabel(/email address/i)).toBeVisible();
+      await expect(modal.getByLabel(/^password$/i)).toBeVisible();
+
+      // Click Cancel
+      await modal.getByRole('button', { name: /cancel/i }).click();
+      await expect(modal).not.toBeVisible();
+    });
+
+    test('should enforce form validation rules for name (min 3) and password (min 8)', async ({ page }) => {
+      const createBtn = page.getByTitle('Create new user');
+      await createBtn.click();
+
+      const modal = page.getByRole('dialog');
+      const nameInput = modal.getByLabel(/full name/i);
+      const emailInput = modal.getByLabel(/email address/i);
+      const passwordInput = modal.getByLabel(/^password$/i);
+
+      // Enter short name and short password
+      await nameInput.fill('Ab');
+      await emailInput.fill('invalid-email');
+      await passwordInput.fill('1234');
+
+      const submitBtn = modal.locator('button[type="submit"]');
+      await submitBtn.click();
+
+      // Assert error messages
+      await expect(modal.getByText('Name must be at least 3 characters')).toBeVisible();
+      await expect(modal.getByText('Please enter a valid email address')).toBeVisible();
+      await expect(modal.getByText('Password must be at least 8 characters')).toBeVisible();
+    });
+
+    test('should successfully create a new user, close modal, and display user in directory', async ({ page }) => {
+      const table = page.locator('table');
+      const createBtn = page.getByTitle('Create new user');
+      await createBtn.click();
+
+      const modal = page.getByRole('dialog');
+      const nameInput = modal.getByLabel(/full name/i);
+      const emailInput = modal.getByLabel(/email address/i);
+      const passwordInput = modal.getByLabel(/^password$/i);
+
+      const newName = 'Marcus Aurelius';
+      const newEmail = 'marcus.agent@ticketai.local';
+      const newPass = 'PhilosopherKing123!';
+
+      await nameInput.fill(newName);
+      await emailInput.fill(newEmail);
+      await passwordInput.fill(newPass);
+
+      const submitBtn = modal.locator('button[type="submit"]');
+      await submitBtn.click();
+
+      // Modal should close automatically on success
+      await expect(modal).not.toBeVisible();
+
+      // New user should appear in table
+      await expect(table.getByText(newName, { exact: true })).toBeVisible();
+      await expect(table.getByText(newEmail, { exact: true })).toBeVisible();
+    });
+  });
 });

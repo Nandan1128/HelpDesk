@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import { Prisma, Role } from '@prisma/client';
+import { z } from 'zod';
+import { hashPassword } from 'better-auth/crypto';
 import { prisma } from '../db/prisma.js';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth.middleware.js';
 
@@ -7,6 +9,93 @@ const router = Router();
 
 // Apply auth and admin check to all user routes
 router.use(requireAuth, requireRole('ADMIN'));
+
+const createUserSchema = z.object({
+  name: z
+    .string({ required_error: 'Name is required' })
+    .trim()
+    .min(3, 'Name must be at least 3 characters'),
+  email: z
+    .string({ required_error: 'Email is required' })
+    .trim()
+    .email('Please enter a valid email address'),
+  password: z
+    .string({ required_error: 'Password is required' })
+    .min(8, 'Password must be at least 8 characters'),
+  role: z.enum(['ADMIN', 'AGENT']).optional().default('AGENT'),
+});
+
+/**
+ * POST /api/users
+ * Create a new user account (Admin only)
+ */
+router.post('/', async (req: AuthenticatedRequest, res: Response) => {
+  const parseResult = createUserSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    const errorMsg = parseResult.error.errors[0]?.message || 'Invalid input data';
+    return res.status(400).json({ error: errorMsg, errors: parseResult.error.errors });
+  }
+
+  const { name, email, password, role } = parseResult.data;
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Check if user with this email already exists
+  const existingUser = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+
+  if (existingUser) {
+    return res.status(400).json({ error: 'A user with this email already exists' });
+  }
+
+  const hashedPassword = await hashPassword(password);
+
+  // Create user and credential account in transaction
+  const newUser = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        name: name.trim(),
+        email: normalizedEmail,
+        role: role as Role,
+        isActive: true,
+        emailVerified: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            assignedTickets: true,
+          },
+        },
+      },
+    });
+
+    await tx.account.create({
+      data: {
+        accountId: user.id,
+        userId: user.id,
+        providerId: 'credential',
+        issuer: 'local:credential',
+        password: hashedPassword,
+      },
+    });
+
+    return user;
+  });
+
+  return res.status(201).json({
+    user: newUser,
+    message: 'User created successfully',
+  });
+});
 
 /**
  * GET /api/users

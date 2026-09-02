@@ -496,4 +496,205 @@ describe('UsersPage Component Tests', () => {
       expect(api.get).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('11. Create User Modal & User Creation Flow', () => {
+    it('renders Create User button next to Refresh button in header', async () => {
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      const createBtn = screen.getByRole('button', { name: /create user/i });
+      expect(createBtn).toBeInTheDocument();
+      expect(createBtn).toBeVisible();
+
+      const refreshBtn = screen.getByTitle('Refresh user list');
+      expect(refreshBtn).toBeInTheDocument();
+    });
+
+    it('opens Create User modal with 3 input fields (Name, Email, Password) when clicked', async () => {
+      const user = userEvent.setup();
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      const createHeaderBtn = screen.getByTitle('Create new user');
+      await user.click(createHeaderBtn);
+
+      // Modal dialog header
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /create new user/i })).toBeInTheDocument();
+
+      // 3 Input Fields
+      expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    });
+
+    it('validates name minimum 3 characters, email format, and password minimum 8 characters', async () => {
+      const user = userEvent.setup();
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Open modal
+      await user.click(screen.getByTitle('Create new user'));
+
+      const nameInput = screen.getByLabelText(/full name/i);
+      const emailInput = screen.getByLabelText(/email address/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
+
+      // Fill invalid values
+      await user.type(nameInput, 'Jo'); // < 3 chars
+      await user.type(emailInput, 'not-an-email'); // invalid email
+      await user.type(passwordInput, '12345'); // < 8 chars
+
+      // Submit form
+      const submitBtn = screen.getByRole('dialog').querySelector('button[type="submit"]')!;
+      await user.click(submitBtn);
+
+      // Verify validation errors
+      await waitFor(() => {
+        expect(screen.getByText('Name must be at least 3 characters')).toBeInTheDocument();
+        expect(screen.getByText('Please enter a valid email address')).toBeInTheDocument();
+        expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument();
+      });
+    });
+
+    it('successfully creates a user, closes modal, and refreshes the user list', async () => {
+      const user = userEvent.setup();
+      const postSpy = vi.spyOn(api, 'post').mockResolvedValue({
+        data: {
+          user: {
+            id: 'user-4',
+            name: 'New Agent User',
+            email: 'new.agent@ticketai.local',
+            role: 'AGENT',
+            isActive: true,
+            createdAt: '2025-03-01T12:00:00.000Z',
+          },
+        },
+      } as any);
+
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Open modal
+      await user.click(screen.getByTitle('Create new user'));
+
+      const nameInput = screen.getByLabelText(/full name/i);
+      const emailInput = screen.getByLabelText(/email address/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
+
+      // Fill valid values
+      await user.type(nameInput, 'New Agent User');
+      await user.type(emailInput, 'new.agent@ticketai.local');
+      await user.type(passwordInput, 'SecurePassword123!');
+
+      // Submit form
+      const submitBtn = screen.getByRole('dialog').querySelector('button[type="submit"]')!;
+      await user.click(submitBtn);
+
+      await waitFor(() => {
+        expect(postSpy).toHaveBeenCalledWith('/users', {
+          name: 'New Agent User',
+          email: 'new.agent@ticketai.local',
+          password: 'SecurePassword123!',
+        });
+      });
+
+      // Modal should be closed
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+
+      // List should have refetched
+      expect(api.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('shows server error alert inside modal if creation fails and keeps modal open', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(api, 'post').mockRejectedValue({
+        response: {
+          data: {
+            error: 'A user with this email already exists',
+          },
+        },
+      });
+
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Open modal
+      await user.click(screen.getByTitle('Create new user'));
+
+      await user.type(screen.getByLabelText(/full name/i), 'Duplicate User');
+      await user.type(screen.getByLabelText(/email address/i), 'admin@example.com');
+      await user.type(screen.getByLabelText(/^password$/i), 'SecurePassword123!');
+
+      const submitBtn = screen.getByRole('dialog').querySelector('button[type="submit"]')!;
+      await user.click(submitBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('A user with this email already exists')).toBeInTheDocument();
+      });
+
+      // Modal stays open so user can fix
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('closes modal and resets form when Cancel button or Close icon is clicked', async () => {
+      const user = userEvent.setup();
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Open modal
+      await user.click(screen.getByTitle('Create new user'));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+      // Click Cancel
+      const cancelBtn = screen.getByRole('button', { name: /cancel/i });
+      await user.click(cancelBtn);
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('toggles password visibility when clicking the eye button', async () => {
+      const user = userEvent.setup();
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      await user.click(screen.getByTitle('Create new user'));
+
+      const passwordInput = screen.getByLabelText(/^password$/i);
+      expect(passwordInput).toHaveAttribute('type', 'password');
+
+      const toggleBtn = screen.getByLabelText(/show password/i);
+      await user.click(toggleBtn);
+
+      expect(passwordInput).toHaveAttribute('type', 'text');
+
+      const hideBtn = screen.getByLabelText(/hide password/i);
+      await user.click(hideBtn);
+
+      expect(passwordInput).toHaveAttribute('type', 'password');
+    });
+  });
 });

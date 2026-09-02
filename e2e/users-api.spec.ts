@@ -174,4 +174,134 @@ test.describe('User Management - List Users API (GET /api/users)', () => {
       expect(body.user.email).toBe(firstUser.email);
     });
   });
+
+  test.describe('POST /api/users - Create User API', () => {
+    test('should return 401 Unauthorized when unauthenticated', async ({ request }) => {
+      const response = await request.post('/api/users', {
+        data: {
+          name: 'New Agent',
+          email: 'newagent@ticketai.local',
+          password: 'Password123!',
+        },
+      });
+      expect(response.status()).toBe(401);
+    });
+
+    test('should return 403 Forbidden when authenticated as Support Agent', async ({ request }) => {
+      await signInAgent(request);
+
+      const response = await request.post('/api/users', {
+        data: {
+          name: 'New Agent',
+          email: 'newagent@ticketai.local',
+          password: 'Password123!',
+        },
+      });
+      expect(response.status()).toBe(403);
+    });
+
+    test('should return 400 when name is less than 3 characters', async ({ request }) => {
+      await signInAdmin(request);
+
+      const response = await request.post('/api/users', {
+        data: {
+          name: 'Al',
+          email: 'valid.email@ticketai.local',
+          password: 'Password123!',
+        },
+      });
+      expect(response.status()).toBe(400);
+
+      const body = await response.json();
+      expect(body.error).toContain('Name must be at least 3 characters');
+    });
+
+    test('should return 400 when password is less than 8 characters', async ({ request }) => {
+      await signInAdmin(request);
+
+      const response = await request.post('/api/users', {
+        data: {
+          name: 'Valid Name',
+          email: 'valid.email@ticketai.local',
+          password: 'pass',
+        },
+      });
+      expect(response.status()).toBe(400);
+
+      const body = await response.json();
+      expect(body.error).toContain('Password must be at least 8 characters');
+    });
+
+    test('should return 400 when email is invalid', async ({ request }) => {
+      await signInAdmin(request);
+
+      const response = await request.post('/api/users', {
+        data: {
+          name: 'Valid Name',
+          email: 'invalid-email-format',
+          password: 'Password123!',
+        },
+      });
+      expect(response.status()).toBe(400);
+
+      const body = await response.json();
+      expect(body.error).toContain('Please enter a valid email address');
+    });
+
+    test('should return 400 when email is already registered', async ({ request }) => {
+      await signInAdmin(request);
+
+      const response = await request.post('/api/users', {
+        data: {
+          name: 'Duplicate Admin',
+          email: TEST_USERS.admin.email,
+          password: 'Password123!',
+        },
+      });
+      expect(response.status()).toBe(400);
+
+      const body = await response.json();
+      expect(body.error).toContain('already exists');
+    });
+
+    test('should return 201 Created and allow new user to sign in with credentials', async ({ request }) => {
+      await signInAdmin(request);
+
+      const newUserData = {
+        name: 'Carlos Mendez',
+        email: 'carlos.mendez@ticketai.local',
+        password: 'SecureAgentPass123!',
+      };
+
+      const response = await request.post('/api/users', {
+        data: newUserData,
+      });
+      expect(response.status()).toBe(201);
+
+      const body = await response.json();
+      expect(body.user).toBeDefined();
+      expect(body.user.name).toBe(newUserData.name);
+      expect(body.user.email).toBe(newUserData.email);
+      expect(body.user.role).toBe('AGENT');
+      expect(body.user.isActive).toBe(true);
+      expect(body.user.password).toBeUndefined();
+
+      // Verify the new user appears in the user list
+      const listRes = await request.get('/api/users');
+      const listBody = await listRes.json();
+      expect(listBody.users.some((u: any) => u.email === newUserData.email)).toBe(true);
+      expect(listBody.pagination.total).toBe(6);
+
+      // Verify the new user can authenticate with Better Auth
+      const loginRes = await request.post('/api/auth/sign-in/email', {
+        data: {
+          email: newUserData.email,
+          password: newUserData.password,
+        },
+      });
+      expect(loginRes.status()).toBe(200);
+      const loginBody = await loginRes.json();
+      expect(loginBody.user.email).toBe(newUserData.email);
+    });
+  });
 });
