@@ -210,6 +210,127 @@ export function useCreateTicket() {
 
 ---
 
+## 🧪 Component Testing with React Testing Library & Vitest
+
+The frontend includes a component testing suite powered by **Vitest**, **React Testing Library (`@testing-library/react`)**, **`@testing-library/jest-dom`**, and **`@testing-library/user-event`** in a **JSDOM** headless environment.
+
+### 1. Executing Component Tests
+
+Run tests directly from the root repository or within the `frontend/` directory:
+
+```bash
+# Run all frontend component tests from project root
+bun run test:frontend
+
+# Run component tests inside frontend directory
+cd frontend && bun run test
+
+# Run component tests in interactive watch mode
+cd frontend && bun run test:watch
+
+# Run a specific component test file
+cd frontend && bun x vitest run src/pages/__tests__/UsersPage.test.tsx
+```
+
+---
+
+### 2. Test File Organization & Setup
+
+* **File Location:** Place test files adjacent to their components in a `__tests__` directory (e.g., `frontend/src/pages/__tests__/<PageName>.test.tsx` or `frontend/src/components/__tests__/<ComponentName>.test.tsx`).
+* **Environment Configuration (`frontend/vite.config.ts`):**
+  * `environment: 'jsdom'` — Provides the DOM API in Node.
+  * `globals: true` — Enables global test methods (`describe`, `it`, `expect`, `vi`).
+  * `setupFiles: ['./src/test/setup.ts']` — Automatically imports `@testing-library/jest-dom/vitest` matchers and triggers React `cleanup()` after each test.
+
+---
+
+### 3. Guidelines for Writing Component Tests
+
+When writing tests for new UI pages or components, follow these standard practices:
+
+#### A. Mocking API Requests (`api` client):
+Mock API endpoints using `vi.spyOn(api, 'get')`, `vi.spyOn(api, 'post')`, etc., or `mockImplementation` for conditional dynamic responses:
+
+```typescript
+import { api } from '@/lib/api';
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      users: mockUsers,
+      pagination: { total: 3, page: 1, limit: 50, totalPages: 1 },
+    },
+  } as any);
+});
+```
+
+#### B. Accessible, User-Centric Queries:
+* Prioritize semantic accessibility queries: `screen.getByRole('button', { name: /save/i })`, `screen.getByRole('textbox', { name: /search/i })`.
+* Use `screen.getAllByText(...)` when components render responsive variants (e.g., desktop `<Table>` alongside mobile card list `<div className="md:hidden">`).
+* Avoid querying by internal CSS class names, test IDs, or DOM structure.
+
+#### C. User Event Simulation:
+* Use `userEvent.setup()` for user interactions like typing (`user.type()`), clearing inputs, or tab switching.
+* Use `fireEvent.click()` when testing immediate toggle switches or table header sort clicks.
+
+#### D. Asynchronous Assertions:
+* Always wrap state transitions and API-dependent assertions inside `await waitFor(() => { ... })`.
+
+---
+
+### 4. Component Test Reference Pattern
+
+```typescript
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { UsersPage } from '../UsersPage';
+import { api } from '@/lib/api';
+
+describe('UsersPage Component', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, 'get').mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: '1',
+            name: 'Jane Doe',
+            email: 'jane@example.com',
+            role: 'AGENT',
+            isActive: true,
+            createdAt: '2025-01-01T00:00:00.000Z',
+          },
+        ],
+      },
+    } as any);
+  });
+
+  it('renders user directory and responds to search', async () => {
+    const user = userEvent.setup();
+    render(<UsersPage />);
+
+    // Wait for initial API resolution
+    await waitFor(() => {
+      expect(screen.getAllByText('Jane Doe').length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Simulate search input
+    const searchInput = screen.getByRole('textbox', { name: /search users/i });
+    await user.type(searchInput, 'Jane');
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith('/users', {
+        params: expect.objectContaining({ search: 'Jane' }),
+      });
+    });
+  });
+});
+```
+
+---
+
 ## 🤖 E2E Testing with `playwright-tester` Subagent
 
 This repository includes a dedicated Antigravity subagent, **[`playwright-tester`](.agents/agents/playwright-tester/agent.md)**, specialized in authoring, organizing, running, and debugging Playwright end-to-end tests against the isolated `helpdesk_test` PostgreSQL database.
@@ -326,6 +447,7 @@ Full agent configuration and extended runbooks are maintained in [`.agents/agent
 │   │   │   ├── Layout.tsx     # App shell with Navbar & Footer
 │   │   │   └── Navbar.tsx     # App header & role-based session controls
 │   │   ├── pages/
+│   │   │   ├── __tests__/     # React Testing Library component test suites (UsersPage.test.tsx)
 │   │   │   ├── LoginPage.tsx  # shadcn-powered login form with validation
 │   │   │   ├── HomePage.tsx   # Dashboard overview with live diagnostics
 │   │   │   └── UsersPage.tsx  # User management view (admin only)
@@ -333,11 +455,13 @@ Full agent configuration and extended runbooks are maintained in [`.agents/agent
 │   │   │   ├── api.ts         # Pre-configured Axios instance with credentials & interceptors
 │   │   │   ├── auth-client.ts # Better Auth client instance
 │   │   │   └── utils.ts       # cn() class utility
+│   │   ├── test/
+│   │   │   └── setup.ts       # Vitest global test setup (jest-dom & cleanup)
 │   │   ├── App.tsx            # Route definitions
 │   │   ├── main.tsx           # React entry point
 │   │   └── index.css          # Theme tokens & global styles
 │   ├── components.json        # shadcn configuration
-│   ├── vite.config.ts         # Vite configuration with configurable API proxy target
+│   ├── vite.config.ts         # Vite configuration with Vitest jsdom test runner & API proxy
 │   ├── tailwind.config.js
 │   └── package.json
 ├── docker/
@@ -346,3 +470,4 @@ Full agent configuration and extended runbooks are maintained in [`.agents/agent
 ├── tech-stack.md              # Technical stack definitions
 └── implementation-plan.md     # Multi-phase execution roadmap
 ```
+

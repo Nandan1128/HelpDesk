@@ -18,6 +18,7 @@
     "db:test:setup": "cd backend && bun run db:test:setup",
     "db:test:reset": "cd backend && bun run db:test:reset",
     "db:test:seed": "cd backend && bun run db:test:seed",
+    "test:frontend": "cd frontend && bun run test",
     "test:e2e": "bun run db:test:setup && playwright test",
     "test:e2e:ui": "bun run db:test:setup && playwright test --ui",
     "test:e2e:debug": "bun run db:test:setup && playwright test --debug",
