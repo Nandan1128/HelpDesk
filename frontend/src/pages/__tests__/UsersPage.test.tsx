@@ -156,6 +156,34 @@ describe('UsersPage Component Tests', () => {
       });
     });
 
+    it('debounces search input to prevent sending requests on every keystroke', async () => {
+      const user = userEvent.setup();
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      const initialCalls = (api.get as any).mock.calls.length;
+
+      const searchInput = screen.getByRole('textbox', { name: /search users/i });
+      // Type 5 characters in quick succession
+      await user.type(searchInput, 'agent');
+
+      // Verify that intermediate single character searches ('a', 'ag', 'age', 'agen') were not separately dispatched
+      await waitFor(() => {
+        expect(api.get).toHaveBeenCalledWith('/users', {
+          params: expect.objectContaining({
+            search: 'agent',
+          }),
+        });
+      });
+
+      // Instead of 5 calls (1 per letter), debounce ensures only 1 new search fetch happened
+      const finalCalls = (api.get as any).mock.calls.length;
+      expect(finalCalls - initialCalls).toBe(1);
+    });
+
     it('shows clear search (X) button and clears text when clicked', async () => {
       const user = userEvent.setup();
       render(<UsersPage />);
