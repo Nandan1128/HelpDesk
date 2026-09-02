@@ -200,12 +200,12 @@ test.describe('User Management - List Users API (GET /api/users)', () => {
       expect(response.status()).toBe(403);
     });
 
-    test('should return 400 when name is less than 3 characters', async ({ request }) => {
+    test('should return 400 when name is less than 3 characters or whitespace-only', async ({ request }) => {
       await signInAdmin(request);
 
       const response = await request.post('/api/users', {
         data: {
-          name: 'Al',
+          name: '   ',
           email: 'valid.email@ticketai.local',
           password: 'Password123!',
         },
@@ -216,14 +216,14 @@ test.describe('User Management - List Users API (GET /api/users)', () => {
       expect(body.error).toContain('Name must be at least 3 characters');
     });
 
-    test('should return 400 when password is less than 8 characters', async ({ request }) => {
+    test('should return 400 when password is less than 8 characters or whitespace-only', async ({ request }) => {
       await signInAdmin(request);
 
       const response = await request.post('/api/users', {
         data: {
           name: 'Valid Name',
           email: 'valid.email@ticketai.local',
-          password: 'pass',
+          password: '        ', // 8 spaces
         },
       });
       expect(response.status()).toBe(400);

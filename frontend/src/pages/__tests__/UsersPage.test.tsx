@@ -566,6 +566,38 @@ describe('UsersPage Component Tests', () => {
       });
     });
 
+    it('rejects whitespace-only inputs for name, email, and password', async () => {
+      const user = userEvent.setup();
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Open modal
+      await user.click(screen.getByTitle('Create new user'));
+
+      const nameInput = screen.getByLabelText(/full name/i);
+      const emailInput = screen.getByLabelText(/email address/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
+
+      // Fill whitespace-only values
+      await user.type(nameInput, '     '); // 5 spaces
+      await user.type(emailInput, '   '); // spaces
+      await user.type(passwordInput, '          '); // 10 spaces
+
+      // Submit form
+      const submitBtn = screen.getByRole('dialog').querySelector('button[type="submit"]')!;
+      await user.click(submitBtn);
+
+      // Verify validation errors remain visible
+      await waitFor(() => {
+        expect(screen.getByText('Name must be at least 3 characters')).toBeInTheDocument();
+        expect(screen.getByText('Email address is required')).toBeInTheDocument();
+        expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument();
+      });
+    });
+
     it('successfully creates a user, closes modal, and refreshes the user list', async () => {
       const user = userEvent.setup();
       const postSpy = vi.spyOn(api, 'post').mockResolvedValue({

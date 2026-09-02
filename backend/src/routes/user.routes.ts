@@ -21,6 +21,7 @@ const createUserSchema = z.object({
     .email('Please enter a valid email address'),
   password: z
     .string({ required_error: 'Password is required' })
+    .trim()
     .min(8, 'Password must be at least 8 characters'),
   role: z.enum(['ADMIN', 'AGENT']).optional().default('AGENT'),
 });

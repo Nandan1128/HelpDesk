@@ -22,15 +22,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 const createUserSchema = z.object({
   name: z
     .string()
-    .min(1, 'Name is required')
+    .trim()
     .min(3, 'Name must be at least 3 characters'),
   email: z
     .string()
+    .trim()
     .min(1, 'Email address is required')
     .email('Please enter a valid email address'),
   password: z
     .string()
-    .min(1, 'Password is required')
+    .trim()
     .min(8, 'Password must be at least 8 characters'),
 });
 
