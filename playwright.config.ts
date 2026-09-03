@@ -14,8 +14,8 @@ const envPath = fs.existsSync(path.resolve(__dirname, '.env.test'))
 
 dotenv.config({ path: envPath, override: true });
 
-const BACKEND_PORT = process.env.PORT || '5000';
-const FRONTEND_PORT = '5173';
+const BACKEND_PORT = process.env.PORT || '5001';
+const FRONTEND_PORT = process.env.FRONTEND_PORT || '5174';
 const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
 const FRONTEND_URL = `http://localhost:${FRONTEND_PORT}`;
 
@@ -66,7 +66,7 @@ export default defineConfig({
       },
     },
     {
-      command: 'bun run dev',
+      command: 'bun run dev:test',
       cwd: path.resolve(__dirname, 'frontend'),
       url: FRONTEND_URL,
       reuseExistingServer: !process.env.CI,
