@@ -6,6 +6,7 @@ import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { UsersPage } from './pages/UsersPage';
+import { TicketsPage } from './pages/TicketsPage';
 
 export function App() {
   return (
@@ -20,6 +21,7 @@ export function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/tickets" element={<TicketsPage />} />
 
             {/* Admin-only routes */}
             <Route element={<AdminRoute />}>

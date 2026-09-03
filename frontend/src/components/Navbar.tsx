@@ -94,13 +94,17 @@ export function Navbar() {
                   Users
                 </Link>
               )}
-              <span
-                className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground/50 cursor-not-allowed"
-                title="Available in Phase 4"
+              <Link
+                to="/tickets"
+                className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname.startsWith('/tickets')
+                    ? 'bg-muted text-foreground font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                }`}
               >
-                <Ticket className="w-4 h-4 mr-2 opacity-50" />
+                <Ticket className="w-4 h-4 mr-2" />
                 Tickets
-              </span>
+              </Link>
               <span
                 className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground/50 cursor-not-allowed"
                 title="Available in Phase 5"

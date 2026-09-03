@@ -102,9 +102,12 @@ Run `bun run db:seed` to populate the following default accounts (also accessibl
   * `GET /api/users/:id` — Retrieves user details by ID (Admin only).
   * `PATCH /api/users/:id` / `PUT /api/users/:id` — Updates user profile details (`name`, `email`, `role`, `isActive`) and optionally updates password if provided (min 8 chars) (Admin only).
   * `DELETE /api/users/:id` — Soft deletes user account (`deletedAt: timestamp`, `isActive: false`), removing them from user listings and terminating active sessions; administrator accounts cannot be deleted (Admin only).
-* **Inbound Email Ingestion Router (`/api/emails`):**
-  * `POST /api/emails/inbound` — Ingests an incoming support email (from, to, subject, body/html, messageId, inReplyTo). Automatically resolves conversation threads via `inReplyTo` header or subject ticket tag (e.g. `[#123]`). Appends messages to existing tickets (reopening if resolved or closed), or creates a new ticket with initial status `OPEN`, category `GENERAL_QUESTION`, and priority `MEDIUM`.
-  * `GET /api/emails/inbound/info` — Returns metadata and payload specification for email webhook integration.
+* **Inbound Email Ingestion Router (`/api/emails` & `/api/webhooks/email`):**
+  * `POST /api/emails/inbound` / `POST /api/webhooks/email` — Ingests an incoming support email (from, to, subject, body/html, messageId, inReplyTo). Automatically resolves conversation threads via `inReplyTo` header or subject ticket tag (e.g. `[#123]`). Appends messages to existing tickets (reopening if resolved or closed), or creates a new ticket with initial status `OPEN`, category `GENERAL_QUESTION`, and priority `MEDIUM`.
+  * `GET /api/emails/inbound/info` / `GET /api/webhooks/email/info` — Returns metadata and payload specification for email webhook integration.
+* **Ticket Management Router (`/api/tickets`):**
+  * `GET /api/tickets` — Lists support tickets sorted by **newest first** (`createdAt: desc`) by default. Supports multi-criteria filtering (`status`, `priority`, `category`, `assignedTo`), debounced search (`subject`, `customerEmail`, `customerName`, `#ticketNumber`), custom sorting (`createdAt`, `updatedAt`, `ticketNumber`, `priority`, `status`, `subject`), pagination, and KPI metric aggregations (total, open, resolved, closed, unassigned, high/urgent) (Authenticated: Admin & Agent).
+  * `GET /api/tickets/:id` — Retrieves detailed ticket record including full message conversation history and assigned agent info (Authenticated: Admin & Agent).
 * **Express Middleware (`backend/src/middleware/auth.middleware.ts`):**
   * `requireAuth`: Validates session cookie headers; attaches `req.user` and `req.session`.
   * `requireRole('ADMIN' | 'AGENT')`: Enforces RBAC permissions on protected endpoints.

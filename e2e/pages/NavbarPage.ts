@@ -5,6 +5,7 @@ export class NavbarPage {
   readonly brandLink: Locator;
   readonly dashboardLink: Locator;
   readonly usersLink: Locator;
+  readonly ticketsLink: Locator;
   readonly userChip: Locator;
   readonly signOutButton: Locator;
 
@@ -13,6 +14,7 @@ export class NavbarPage {
     this.brandLink = page.getByRole('link', { name: /TicketAI/i });
     this.dashboardLink = page.getByRole('link', { name: /dashboard/i });
     this.usersLink = page.getByRole('link', { name: /users/i });
+    this.ticketsLink = page.getByRole('link', { name: /tickets/i });
     this.userChip = page.locator('header').locator('div.rounded-full');
     this.signOutButton = page.getByRole('button', { name: /sign out/i });
   }
@@ -39,5 +41,10 @@ export class NavbarPage {
   async navigateToUsers() {
     await this.usersLink.click();
     await expect(this.page).toHaveURL('/users');
+  }
+
+  async navigateToTickets() {
+    await this.ticketsLink.click();
+    await expect(this.page).toHaveURL('/tickets');
   }
 }
