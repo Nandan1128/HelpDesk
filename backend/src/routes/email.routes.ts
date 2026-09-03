@@ -5,11 +5,7 @@ import { env } from '../config/env.js';
 
 const router = Router();
 
-/**
- * GET /api/emails/inbound/info
- * Returns configuration details about the inbound email webhook
- */
-router.get('/inbound/info', (_req: Request, res: Response) => {
+const getInfoHandler = (_req: Request, res: Response) => {
   res.json({
     status: 'active',
     supportEmail: env.SUPPORT_EMAIL,
@@ -28,13 +24,13 @@ router.get('/inbound/info', (_req: Request, res: Response) => {
       subjectTag: 'Extracts [#123] to append to ticket #123 and reopen if closed',
     },
   });
-});
+};
 
-/**
- * POST /api/emails/inbound
- * Ingests an inbound support email and converts to new ticket or appends to existing thread
- */
-router.post('/inbound', async (req: Request, res: Response) => {
+router.get('/inbound/info', getInfoHandler);
+router.get('/webhook/info', getInfoHandler);
+router.get('/info', getInfoHandler);
+
+const handleInboundEmail = async (req: Request, res: Response) => {
   try {
     const result = await EmailIngestionService.processInboundEmail(req.body);
     const statusCode = result.action === 'created_ticket' ? 201 : 200;
@@ -85,6 +81,10 @@ router.post('/inbound', async (req: Request, res: Response) => {
       error: errorMessage,
     });
   }
-});
+};
+
+router.post('/inbound', handleInboundEmail);
+router.post('/webhook', handleInboundEmail);
+router.post('/', handleInboundEmail);
 
 export default router;

@@ -113,6 +113,7 @@ app.use('/api/users', userRoutes);
 
 // Inbound Email Ingestion Routes
 app.use('/api/emails', emailRoutes);
+app.use('/api/webhooks/email', emailRoutes);
 
 const server = app.listen(env.PORT, () => {
   console.log(`🚀 TicketAI Backend server running on http://localhost:${env.PORT}`);
