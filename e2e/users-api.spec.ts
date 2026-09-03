@@ -421,4 +421,85 @@ test.describe('User Management - List Users API (GET /api/users)', () => {
       expect(loginRes.status()).toBe(200);
     });
   });
+
+  describe('DELETE /api/users/:id - Soft Delete User & Admin Protection', () => {
+    test('should return 401 Unauthorized when not logged in', async ({ request }) => {
+      const response = await request.delete('/api/users/any-id');
+      expect(response.status()).toBe(401);
+    });
+
+    test('should return 403 Forbidden when logged in as non-admin agent', async ({ request }) => {
+      await signInAgent(request);
+      const response = await request.delete('/api/users/any-id');
+      expect(response.status()).toBe(403);
+    });
+
+    test('should return 404 when user does not exist', async ({ request }) => {
+      await signInAdmin(request);
+      const response = await request.delete('/api/users/non-existent-user-id');
+      expect(response.status()).toBe(404);
+      const body = await response.json();
+      expect(body.error).toContain('User not found');
+    });
+
+    test('should return 400 when attempting to delete an ADMIN account', async ({ request }) => {
+      await signInAdmin(request);
+      const listRes = await request.get('/api/users');
+      const listBody = await listRes.json();
+      const adminUser = listBody.users.find((u: any) => u.email === TEST_USERS.admin.email);
+
+      const response = await request.delete(`/api/users/${adminUser.id}`);
+      expect(response.status()).toBe(400);
+      const body = await response.json();
+      expect(body.error).toContain('Administrator accounts cannot be deleted');
+    });
+
+    test('should soft delete AGENT user (isActive: false) and prevent deactivated user from accessing protected APIs', async ({ request }) => {
+      await signInAdmin(request);
+
+      // Create a temporary agent user to delete
+      const tempAgent = {
+        name: 'Temp Deletable Agent',
+        email: 'temp.deletable.agent@ticketai.local',
+        password: 'Password123!',
+      };
+
+      const createRes = await request.post('/api/users', {
+        data: tempAgent,
+      });
+      expect(createRes.status()).toBe(201);
+      const createdUser = (await createRes.json()).user;
+
+      // Soft delete the user
+      const deleteRes = await request.delete(`/api/users/${createdUser.id}`);
+      expect(deleteRes.status()).toBe(200);
+      const deleteBody = await deleteRes.json();
+      expect(deleteBody.user.isActive).toBe(false);
+      expect(deleteBody.user.deletedAt).toBeDefined();
+      expect(deleteBody.message).toContain('deleted');
+
+      // Verify user is removed from user list (checked with deletedAt: null)
+      const listRes = await request.get('/api/users');
+      const listBody = await listRes.json();
+      const found = listBody.users.find((u: any) => u.id === createdUser.id);
+      expect(found).toBeUndefined();
+
+      // Verify sign in / auth access is forbidden for deactivated account
+      const loginRes = await request.post('/api/auth/sign-in/email', {
+        data: {
+          email: tempAgent.email,
+          password: tempAgent.password,
+        },
+      });
+
+      // If Better Auth signs in, verify subsequent request to protected route is forbidden (403)
+      if (loginRes.status() === 200) {
+        const cookies = loginRes.headers()['set-cookie'];
+        const meRes = await request.get('/api/me', {
+          headers: cookies ? { cookie: cookies } : {},
+        });
+        expect(meRes.status()).toBe(403);
+      }
+    });
+  });
 });

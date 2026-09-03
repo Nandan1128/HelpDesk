@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { CreateUserModal } from '@/components/CreateUserModal';
 import { EditUserModal } from '@/components/EditUserModal';
+import { DeleteUserModal } from '@/components/DeleteUserModal';
 import { UserTable, UserItem, UserSortField } from '@/components/UserTable';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
@@ -43,6 +44,7 @@ interface UserListResponse {
 export type UserModal =
   | { mode: 'create' }
   | { mode: 'edit'; user: UserItem }
+  | { mode: 'delete'; user: UserItem }
   | null;
 
 export function UsersPage() {
@@ -417,6 +419,7 @@ export function UsersPage() {
         onToggleSort={toggleSort}
         onClearFilters={handleClearFilters}
         onEditUser={(user) => setModal({ mode: 'edit', user })}
+        onDeleteUser={(user) => setModal({ mode: 'delete', user })}
       />
 
       {/* Create User Modal */}
@@ -432,6 +435,14 @@ export function UsersPage() {
         user={modal?.mode === 'edit' ? modal.user : null}
         onClose={() => setModal(null)}
         onUserUpdated={() => fetchUsers(true)}
+      />
+
+      {/* Delete User Modal */}
+      <DeleteUserModal
+        isOpen={modal?.mode === 'delete'}
+        user={modal?.mode === 'delete' ? modal.user : null}
+        onClose={() => setModal(null)}
+        onUserDeleted={() => fetchUsers(true)}
       />
     </div>
   );

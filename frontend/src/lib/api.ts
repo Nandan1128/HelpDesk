@@ -57,6 +57,19 @@ api.interceptors.response.use(
       customMessage = error.message;
     }
 
+    // Automatically navigate to /login when session is invalidated (401) or account is deactivated/deleted (403)
+    const status = error.response?.status;
+    const isAuthError =
+      status === 401 ||
+      (status === 403 &&
+        (customMessage.toLowerCase().includes('deactivated') ||
+          customMessage.toLowerCase().includes('deleted') ||
+          customMessage.toLowerCase().includes('unauthorized')));
+
+    if (isAuthError && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
+
     return Promise.reject(error);
   }
 );

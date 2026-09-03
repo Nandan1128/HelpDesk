@@ -7,6 +7,7 @@ import {
   Calendar,
   Ticket,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 import {
   Card,
@@ -34,6 +35,7 @@ export interface UserItem {
   image?: string | null;
   role: 'ADMIN' | 'AGENT';
   isActive: boolean;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -53,6 +55,7 @@ export interface UserTableProps {
   onToggleSort?: (field: UserSortField) => void;
   onClearFilters?: () => void;
   onEditUser?: (user: UserItem) => void;
+  onDeleteUser?: (user: UserItem) => void;
 }
 
 export function UserTable({
@@ -64,6 +67,7 @@ export function UserTable({
   onToggleSort,
   onClearFilters,
   onEditUser,
+  onDeleteUser,
 }: UserTableProps) {
   const getInitials = (name?: string) => {
     if (!name) return 'U';
@@ -189,7 +193,7 @@ export function UserTable({
                         {renderSortIcon('createdAt')}
                       </button>
                     </TableHead>
-                    <TableHead className="w-[80px] text-right font-semibold text-xs uppercase tracking-wider">
+                    <TableHead className="w-[100px] text-right font-semibold text-xs uppercase tracking-wider">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -287,16 +291,30 @@ export function UserTable({
 
                         {/* Actions */}
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onEditUser?.(user)}
-                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                            title={`Edit ${user.name}`}
-                            aria-label={`Edit ${user.name}`}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onEditUser?.(user)}
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                              title={`Edit ${user.name}`}
+                              aria-label={`Edit ${user.name}`}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            {!isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onDeleteUser?.(user)}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                                title={`Delete ${user.name}`}
+                                aria-label={`Delete ${user.name}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -346,16 +364,30 @@ export function UserTable({
                             Inactive
                           </Badge>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEditUser?.(user)}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                          title={`Edit ${user.name}`}
-                          aria-label={`Edit ${user.name}`}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onEditUser?.(user)}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                            title={`Edit ${user.name}`}
+                            aria-label={`Edit ${user.name}`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          {!isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onDeleteUser?.(user)}
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                              title={`Delete ${user.name}`}
+                              aria-label={`Delete ${user.name}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
 

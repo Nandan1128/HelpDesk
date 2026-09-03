@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,9 +49,16 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+  const routeError = (location.state as { error?: string })?.error;
 
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(routeError || null);
+
+  useEffect(() => {
+    if (routeError) {
+      setErrorMessage(routeError);
+    }
+  }, [routeError]);
 
   const {
     register,

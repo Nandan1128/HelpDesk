@@ -98,9 +98,10 @@ Run `bun run db:seed` to populate the following default accounts (also accessibl
   * `GET /api/auth/get-session` — Returns active session and user profile.
 * **User Management Router (`/api/users`):**
   * `POST /api/users` — Creates a new user (Admin only; validates name ≥ 3 chars, email, password ≥ 8 chars).
-  * `GET /api/users` — Lists users with search, role, status filtering, sorting, and pagination (Admin only).
+  * `GET /api/users` — Lists active (non-deleted: `deletedAt: null`) users with search, role, status filtering, sorting, and pagination (Admin only).
   * `GET /api/users/:id` — Retrieves user details by ID (Admin only).
   * `PATCH /api/users/:id` / `PUT /api/users/:id` — Updates user profile details (`name`, `email`, `role`, `isActive`) and optionally updates password if provided (min 8 chars) (Admin only).
+  * `DELETE /api/users/:id` — Soft deletes user account (`deletedAt: timestamp`, `isActive: false`), removing them from user listings and terminating active sessions; administrator accounts cannot be deleted (Admin only).
 * **Express Middleware (`backend/src/middleware/auth.middleware.ts`):**
   * `requireAuth`: Validates session cookie headers; attaches `req.user` and `req.session`.
   * `requireRole('ADMIN' | 'AGENT')`: Enforces RBAC permissions on protected endpoints.

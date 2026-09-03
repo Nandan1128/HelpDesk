@@ -145,7 +145,9 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 50));
     const skip = (pageNum - 1) * limitNum;
 
-    const where: Prisma.UserWhereInput = {};
+    const where: Prisma.UserWhereInput = {
+      deletedAt: null,
+    };
 
     if (searchTerm) {
       where.OR = [
@@ -179,6 +181,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
           image: true,
           role: true,
           isActive: true,
+          deletedAt: true,
           createdAt: true,
           updatedAt: true,
           _count: {
@@ -231,6 +234,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
         image: true,
         role: true,
         isActive: true,
+        deletedAt: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -241,7 +245,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
       },
     });
 
-    if (!user) {
+    if (!user || user.deletedAt !== null) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -270,7 +274,7 @@ const handleUpdateUser = async (req: AuthenticatedRequest, res: Response) => {
     where: { id },
   });
 
-  if (!existingUser) {
+  if (!existingUser || existingUser.deletedAt !== null) {
     return res.status(404).json({ error: 'User not found' });
   }
 
@@ -311,6 +315,7 @@ const handleUpdateUser = async (req: AuthenticatedRequest, res: Response) => {
         image: true,
         role: true,
         isActive: true,
+        deletedAt: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -358,5 +363,66 @@ const handleUpdateUser = async (req: AuthenticatedRequest, res: Response) => {
 
 router.patch('/:id', handleUpdateUser);
 router.put('/:id', handleUpdateUser);
+
+/**
+ * DELETE /api/users/:id
+ * Soft delete user account (Admin only)
+ * Sets deletedAt timestamp and flags isActive as false.
+ * Administrator accounts cannot be deleted.
+ */
+router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+
+  const existingUser = await prisma.user.findUnique({
+    where: { id },
+  });
+
+  if (!existingUser || existingUser.deletedAt !== null) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  // Admin cannot be deleted
+  if (existingUser.role === 'ADMIN') {
+    return res.status(400).json({ error: 'Administrator accounts cannot be deleted' });
+  }
+
+  // Soft delete: flag as inactive, record deletedAt, and terminate active sessions
+  const deletedUser = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        deletedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            assignedTickets: true,
+          },
+        },
+      },
+    });
+
+    // Invalidate active sessions immediately
+    await tx.session.deleteMany({
+      where: { userId: id },
+    });
+
+    return user;
+  });
+
+  return res.json({
+    user: deletedUser,
+    message: 'User deleted successfully',
+  });
+});
 
 export default router;

@@ -18,7 +18,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     }
 
     const user = sessionData.user as Record<string, unknown>;
-    if (user.isActive === false) {
+    if (user.isActive === false || user.deletedAt) {
       return res.status(403).json({ error: 'Forbidden: Account has been deactivated' });
     }
 

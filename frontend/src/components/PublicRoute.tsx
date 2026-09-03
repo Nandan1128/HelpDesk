@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Bot, Loader2 } from 'lucide-react';
-import { useSession } from '../lib/auth-client';
+import { useSession, AuthUser } from '../lib/auth-client';
 
 export function PublicRoute() {
   const { data: session, isPending } = useSession();
@@ -22,7 +22,8 @@ export function PublicRoute() {
     );
   }
 
-  if (session?.user) {
+  const user = session?.user as AuthUser | undefined;
+  if (user && user.isActive !== false && !user.deletedAt) {
     const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
     return <Navigate to={from} replace />;
   }

@@ -46,6 +46,7 @@ model User {
   image           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
 
   // Better Auth relations
   sessions        Session[]
@@ -57,6 +58,7 @@ model User {
   assignedTickets Ticket[] @relation("AssignedAgent")
 
   @@index([role])
+  @@index([deletedAt])
   @@map("user")
 }
 

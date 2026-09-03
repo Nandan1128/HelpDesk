@@ -9,6 +9,7 @@ export interface AuthUser {
   image?: string | null;
   role?: 'ADMIN' | 'AGENT' | string;
   isActive?: boolean;
+  deletedAt?: string | Date | null;
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -26,6 +27,10 @@ const getBaseURL = (): string => {
 
 export const authClient = createAuthClient({
   baseURL: getBaseURL(),
+  sessionOptions: {
+    refetchInterval: 3,
+    refetchOnWindowFocus: true,
+  },
   plugins: [
     inferAdditionalFields({
       user: {
@@ -34,6 +39,9 @@ export const authClient = createAuthClient({
         },
         isActive: {
           type: 'boolean',
+        },
+        deletedAt: {
+          type: 'date',
         },
       },
     }),

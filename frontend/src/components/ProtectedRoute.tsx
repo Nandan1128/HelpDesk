@@ -27,7 +27,7 @@ export function ProtectedRoute() {
   }
 
   const user = session.user as AuthUser;
-  if (user.isActive === false) {
+  if (user.isActive === false || user.deletedAt) {
     return <Navigate to="/login" state={{ error: 'Account has been deactivated' }} replace />;
   }
 

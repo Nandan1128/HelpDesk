@@ -818,4 +818,56 @@ describe('UsersPage Component Tests', () => {
       });
     });
   });
+
+  describe('13. Delete User Confirmation & Soft Delete Flow', () => {
+    it('does not render delete button for ADMIN users', async () => {
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Admin user row only has Edit button, no Delete button
+      expect(screen.queryByTitle('Delete Admin User')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Admin accounts cannot be deleted')).not.toBeInTheDocument();
+    });
+
+    it('opens confirmation modal and soft deletes agent user when confirmed', async () => {
+      const user = userEvent.setup();
+      const deleteSpy = vi.spyOn(api, 'delete').mockResolvedValue({
+        data: {
+          user: {
+            ...mockUsers[1],
+            isActive: false,
+          },
+          message: 'User deactivated successfully',
+        },
+      } as any);
+
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Sarah Connor').length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Click delete button for Sarah Connor
+      const deleteBtn = screen.getAllByTitle('Delete Sarah Connor')[0];
+      expect(deleteBtn).toBeEnabled();
+      await user.click(deleteBtn);
+
+      // Verify Delete User confirmation dialog appears
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /delete user/i })).toBeInTheDocument();
+      expect(screen.getByText(/this action cannot be undone/i)).toBeInTheDocument();
+
+      // Click confirm Delete User button
+      const confirmDeleteBtn = screen.getByRole('button', { name: /delete user/i });
+      await user.click(confirmDeleteBtn);
+
+      await waitFor(() => {
+        expect(deleteSpy).toHaveBeenCalledWith('/users/user-2');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+  });
 });
