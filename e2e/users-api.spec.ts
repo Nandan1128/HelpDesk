@@ -304,4 +304,121 @@ test.describe('User Management - List Users API (GET /api/users)', () => {
       expect(loginBody.user.email).toBe(newUserData.email);
     });
   });
+
+  describe('PATCH /api/users/:id - Edit User Details & Password', () => {
+    test('should return 401 Unauthorized when not logged in', async ({ request }) => {
+      const response = await request.patch('/api/users/some-id', {
+        data: { name: 'Unauthorized Update' },
+      });
+      expect(response.status()).toBe(401);
+    });
+
+    test('should return 403 Forbidden when logged in as non-admin agent', async ({ request }) => {
+      await signInAgent(request);
+      const response = await request.patch('/api/users/some-id', {
+        data: { name: 'Forbidden Update' },
+      });
+      expect(response.status()).toBe(403);
+    });
+
+    test('should return 404 when user does not exist', async ({ request }) => {
+      await signInAdmin(request);
+      const response = await request.patch('/api/users/non-existent-user-id', {
+        data: { name: 'New Name' },
+      });
+      expect(response.status()).toBe(404);
+      const body = await response.json();
+      expect(body.error).toContain('User not found');
+    });
+
+    test('should return 400 when name is less than 3 characters or whitespace only', async ({ request }) => {
+      await signInAdmin(request);
+      const listRes = await request.get('/api/users');
+      const listBody = await listRes.json();
+      const targetUser = listBody.users.find((u: any) => u.email !== TEST_USERS.admin.email);
+
+      const response = await request.patch(`/api/users/${targetUser.id}`, {
+        data: { name: '  ' },
+      });
+      expect(response.status()).toBe(400);
+      const body = await response.json();
+      expect(body.error).toContain('Name must be at least 3 characters');
+    });
+
+    test('should return 400 when password is entered but shorter than 8 characters', async ({ request }) => {
+      await signInAdmin(request);
+      const listRes = await request.get('/api/users');
+      const listBody = await listRes.json();
+      const targetUser = listBody.users.find((u: any) => u.email !== TEST_USERS.admin.email);
+
+      const response = await request.patch(`/api/users/${targetUser.id}`, {
+        data: { password: 'short' },
+      });
+      expect(response.status()).toBe(400);
+      const body = await response.json();
+      expect(body.error).toContain('Password must be at least 8 characters');
+    });
+
+    test('should return 400 when email is updated to an already registered address', async ({ request }) => {
+      await signInAdmin(request);
+      const listRes = await request.get('/api/users');
+      const listBody = await listRes.json();
+      const targetUser = listBody.users.find((u: any) => u.email !== TEST_USERS.admin.email);
+
+      const response = await request.patch(`/api/users/${targetUser.id}`, {
+        data: { email: TEST_USERS.admin.email },
+      });
+      expect(response.status()).toBe(400);
+      const body = await response.json();
+      expect(body.error).toContain('already exists');
+    });
+
+    test('should update user name without changing password when password is empty', async ({ request }) => {
+      await signInAdmin(request);
+      const listRes = await request.get('/api/users');
+      const listBody = await listRes.json();
+      const agentUser = listBody.users.find((u: any) => u.email === TEST_USERS.agent1.email);
+
+      const response = await request.patch(`/api/users/${agentUser.id}`, {
+        data: { name: 'Sarah Connor Updated' },
+      });
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+      expect(body.user.name).toBe('Sarah Connor Updated');
+
+      // Verify agent can still authenticate with original password
+      const loginRes = await request.post('/api/auth/sign-in/email', {
+        data: {
+          email: TEST_USERS.agent1.email,
+          password: TEST_USERS.agent1.password,
+        },
+      });
+      expect(loginRes.status()).toBe(200);
+    });
+
+    test('should update password when provided and allow authentication with new password', async ({ request }) => {
+      await signInAdmin(request);
+      const listRes = await request.get('/api/users');
+      const listBody = await listRes.json();
+      const agentUser = listBody.users.find((u: any) => u.email === TEST_USERS.agent1.email);
+
+      const newPassword = 'NewSarahPassword2026!';
+      const response = await request.patch(`/api/users/${agentUser.id}`, {
+        data: {
+          name: 'Sarah Connor Re-Updated',
+          password: newPassword,
+        },
+      });
+      expect(response.status()).toBe(200);
+
+      // Verify agent can authenticate with NEW password
+      const loginRes = await request.post('/api/auth/sign-in/email', {
+        data: {
+          email: TEST_USERS.agent1.email,
+          password: newPassword,
+        },
+      });
+      expect(loginRes.status()).toBe(200);
+    });
+  });
 });

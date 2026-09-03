@@ -100,6 +100,7 @@ Run `bun run db:seed` to populate the following default accounts (also accessibl
   * `POST /api/users` — Creates a new user (Admin only; validates name ≥ 3 chars, email, password ≥ 8 chars).
   * `GET /api/users` — Lists users with search, role, status filtering, sorting, and pagination (Admin only).
   * `GET /api/users/:id` — Retrieves user details by ID (Admin only).
+  * `PATCH /api/users/:id` / `PUT /api/users/:id` — Updates user profile details (`name`, `email`, `role`, `isActive`) and optionally updates password if provided (min 8 chars) (Admin only).
 * **Express Middleware (`backend/src/middleware/auth.middleware.ts`):**
   * `requireAuth`: Validates session cookie headers; attaches `req.user` and `req.session`.
   * `requireRole('ADMIN' | 'AGENT')`: Enforces RBAC permissions on protected endpoints.

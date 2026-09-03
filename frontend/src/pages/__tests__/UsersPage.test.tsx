@@ -757,4 +757,65 @@ describe('UsersPage Component Tests', () => {
       expect(passwordInput).toHaveAttribute('type', 'password');
     });
   });
+
+  describe('12. Edit User Modal & User Update Flow', () => {
+    it('opens Edit User dialog pre-populated with user data when clicking edit button in table row', async () => {
+      const user = userEvent.setup();
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Click Edit button for Admin User
+      const editBtn = screen.getAllByTitle('Edit Admin User')[0];
+      await user.click(editBtn);
+
+      // Verify Edit dialog opens
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /edit user/i })).toBeInTheDocument();
+
+      // Fields are populated with current user data
+      expect(screen.getByLabelText(/full name/i)).toHaveValue('Admin User');
+      expect(screen.getByLabelText(/email address/i)).toHaveValue('admin@example.com');
+      expect(screen.getByLabelText(/^password$/i)).toHaveValue('');
+    });
+
+    it('submits user edit, calls PATCH /api/users/:id, closes modal, and refreshes list', async () => {
+      const user = userEvent.setup();
+      const patchSpy = vi.spyOn(api, 'patch').mockResolvedValue({
+        data: {
+          user: {
+            ...mockUsers[0],
+            name: 'Admin User Updated',
+          },
+          message: 'User updated successfully',
+        },
+      } as any);
+
+      render(<UsersPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Admin User').length).toBeGreaterThanOrEqual(1);
+      });
+
+      const editBtn = screen.getAllByTitle('Edit Admin User')[0];
+      await user.click(editBtn);
+
+      const nameInput = screen.getByLabelText(/full name/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, 'Admin User Updated');
+
+      const saveBtn = screen.getByRole('button', { name: /save changes/i });
+      await user.click(saveBtn);
+
+      await waitFor(() => {
+        expect(patchSpy).toHaveBeenCalledWith('/users/user-1', {
+          name: 'Admin User Updated',
+          email: 'admin@example.com',
+        });
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+  });
 });

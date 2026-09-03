@@ -6,6 +6,7 @@ import {
   Mail,
   Calendar,
   Ticket,
+  Pencil,
 } from 'lucide-react';
 import {
   Card,
@@ -51,6 +52,7 @@ export interface UserTableProps {
   sortOrder?: UserSortOrder;
   onToggleSort?: (field: UserSortField) => void;
   onClearFilters?: () => void;
+  onEditUser?: (user: UserItem) => void;
 }
 
 export function UserTable({
@@ -61,6 +63,7 @@ export function UserTable({
   sortOrder = 'desc',
   onToggleSort,
   onClearFilters,
+  onEditUser,
 }: UserTableProps) {
   const getInitials = (name?: string) => {
     if (!name) return 'U';
@@ -186,6 +189,9 @@ export function UserTable({
                         {renderSortIcon('createdAt')}
                       </button>
                     </TableHead>
+                    <TableHead className="w-[80px] text-right font-semibold text-xs uppercase tracking-wider">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -278,6 +284,20 @@ export function UserTable({
                             <span>{formatDate(user.createdAt)}</span>
                           </div>
                         </TableCell>
+
+                        {/* Actions */}
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onEditUser?.(user)}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                            title={`Edit ${user.name}`}
+                            aria-label={`Edit ${user.name}`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -310,21 +330,33 @@ export function UserTable({
                         </div>
                       </div>
 
-                      {user.isActive ? (
-                        <Badge
-                          variant="outline"
-                          className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] py-0 px-1.5"
+                      <div className="flex items-center gap-1.5">
+                        {user.isActive ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] py-0 px-1.5"
+                          >
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="bg-muted text-muted-foreground border-border text-[10px] py-0 px-1.5"
+                          >
+                            Inactive
+                          </Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEditUser?.(user)}
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                          title={`Edit ${user.name}`}
+                          aria-label={`Edit ${user.name}`}
                         >
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="bg-muted text-muted-foreground border-border text-[10px] py-0 px-1.5"
-                        >
-                          Inactive
-                        </Badge>
-                      )}
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs pt-1">

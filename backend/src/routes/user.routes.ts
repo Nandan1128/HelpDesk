@@ -26,6 +26,28 @@ const createUserSchema = z.object({
   role: z.enum(['ADMIN', 'AGENT']).optional().default('AGENT'),
 });
 
+const updateUserSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(3, 'Name must be at least 3 characters')
+    .optional(),
+  email: z
+    .string()
+    .trim()
+    .email('Please enter a valid email address')
+    .optional(),
+  password: z
+    .string()
+    .trim()
+    .refine((val) => val === '' || val.length >= 8, {
+      message: 'Password must be at least 8 characters',
+    })
+    .optional(),
+  role: z.enum(['ADMIN', 'AGENT']).optional(),
+  isActive: z.boolean().optional(),
+});
+
 /**
  * POST /api/users
  * Create a new user account (Admin only)
@@ -229,5 +251,112 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
     return res.status(500).json({ error: 'Failed to retrieve user details' });
   }
 });
+
+/**
+ * PATCH /api/users/:id
+ * PUT /api/users/:id
+ * Update user account details and optionally change password (Admin only)
+ */
+const handleUpdateUser = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+
+  const parseResult = updateUserSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    const errorMsg = parseResult.error.errors[0]?.message || 'Invalid input data';
+    return res.status(400).json({ error: errorMsg, errors: parseResult.error.errors });
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { id },
+  });
+
+  if (!existingUser) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const { name, email, password, role, isActive } = parseResult.data;
+
+  // Check email uniqueness if email is changed
+  let normalizedEmail: string | undefined;
+  if (email) {
+    normalizedEmail = email.toLowerCase().trim();
+    if (normalizedEmail !== existingUser.email) {
+      const emailConflict = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+      if (emailConflict) {
+        return res.status(400).json({ error: 'A user with this email already exists' });
+      }
+    }
+  }
+
+  // Check if a new non-empty password is provided
+  const shouldUpdatePassword = typeof password === 'string' && password.trim().length >= 8;
+  const hashedPassword = shouldUpdatePassword ? await hashPassword(password.trim()) : null;
+
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id },
+      data: {
+        ...(name ? { name: name.trim() } : {}),
+        ...(normalizedEmail ? { email: normalizedEmail } : {}),
+        ...(role ? { role: role as Role } : {}),
+        ...(typeof isActive === 'boolean' ? { isActive } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            assignedTickets: true,
+          },
+        },
+      },
+    });
+
+    if (shouldUpdatePassword && hashedPassword) {
+      const credentialAccount = await tx.account.findFirst({
+        where: {
+          userId: id,
+          providerId: 'credential',
+        },
+      });
+
+      if (credentialAccount) {
+        await tx.account.update({
+          where: { id: credentialAccount.id },
+          data: { password: hashedPassword },
+        });
+      } else {
+        await tx.account.create({
+          data: {
+            accountId: id,
+            userId: id,
+            providerId: 'credential',
+            issuer: 'local:credential',
+            password: hashedPassword,
+          },
+        });
+      }
+    }
+
+    return user;
+  });
+
+  return res.json({
+    user: updatedUser,
+    message: 'User updated successfully',
+  });
+};
+
+router.patch('/:id', handleUpdateUser);
+router.put('/:id', handleUpdateUser);
 
 export default router;

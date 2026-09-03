@@ -15,6 +15,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { CreateUserModal } from '@/components/CreateUserModal';
+import { EditUserModal } from '@/components/EditUserModal';
 import { UserTable, UserItem, UserSortField } from '@/components/UserTable';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
@@ -39,12 +40,17 @@ interface UserListResponse {
   };
 }
 
+export type UserModal =
+  | { mode: 'create' }
+  | { mode: 'edit'; user: UserItem }
+  | null;
+
 export function UsersPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [modal, setModal] = useState<UserModal>(null);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -153,7 +159,7 @@ export function UsersPage() {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => setModal({ mode: 'create' })}
             className="gap-2 cursor-pointer"
             title="Create new user"
           >
@@ -410,13 +416,22 @@ export function UsersPage() {
         sortOrder={sortOrder}
         onToggleSort={toggleSort}
         onClearFilters={handleClearFilters}
+        onEditUser={(user) => setModal({ mode: 'edit', user })}
       />
 
       {/* Create User Modal */}
       <CreateUserModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        isOpen={modal?.mode === 'create'}
+        onClose={() => setModal(null)}
         onUserCreated={() => fetchUsers(true)}
+      />
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        isOpen={modal?.mode === 'edit'}
+        user={modal?.mode === 'edit' ? modal.user : null}
+        onClose={() => setModal(null)}
+        onUserUpdated={() => fetchUsers(true)}
       />
     </div>
   );
