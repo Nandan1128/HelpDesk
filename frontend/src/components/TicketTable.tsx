@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from 'react';
+import { Link, useInRouterContext } from 'react-router-dom';
 import {
   useReactTable,
   getCoreRowModel,
@@ -86,6 +87,37 @@ declare module '@tanstack/react-table' {
     headerClassName?: string;
     cellClassName?: string;
   }
+}
+
+export function TicketSubjectLink({
+  ticketNumber,
+  ticketId,
+  children,
+  className,
+  onClick,
+  ...props
+}: {
+  ticketNumber?: number;
+  ticketId?: string;
+  children: React.ReactNode;
+  className?: string;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  [key: string]: any;
+}) {
+  const targetId = ticketNumber !== undefined ? ticketNumber : ticketId;
+  const inRouter = useInRouterContext();
+  if (inRouter) {
+    return (
+      <Link to={`/tickets/${targetId}`} className={className} onClick={onClick} {...props}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <a href={`/tickets/${targetId}`} className={className} onClick={onClick} {...props}>
+      {children}
+    </a>
+  );
 }
 
 export function TicketTable({
@@ -290,9 +322,15 @@ export function TicketTable({
           return (
             <div className="flex flex-col space-y-1">
               <div className="flex items-center space-x-2">
-                <span className="font-semibold text-sm text-foreground hover:text-primary transition-colors line-clamp-1">
+                <TicketSubjectLink
+                  ticketNumber={ticket.ticketNumber}
+                  ticketId={ticket.id}
+                  className="font-semibold text-sm text-foreground hover:text-primary transition-colors line-clamp-1 no-underline cursor-pointer"
+                  data-testid={`ticket-subject-${ticket.ticketNumber || ticket.id}`}
+                  onClick={() => onSelectTicket?.(ticket)}
+                >
                   {ticket.subject}
-                </span>
+                </TicketSubjectLink>
                 {ticket._count && ticket._count.messages > 1 && (
                   <Badge
                     variant="secondary"
@@ -546,9 +584,15 @@ export function TicketTable({
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold text-foreground line-clamp-2">
+                <TicketSubjectLink
+                  ticketNumber={ticket.ticketNumber}
+                  ticketId={ticket.id}
+                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors line-clamp-2 no-underline cursor-pointer inline-block"
+                  data-testid={`ticket-subject-mobile-${ticket.ticketNumber || ticket.id}`}
+                  onClick={() => onSelectTicket?.(ticket)}
+                >
                   {ticket.subject}
-                </h4>
+                </TicketSubjectLink>
                 <div className="text-xs text-muted-foreground mt-1 flex items-center justify-between">
                   <span>{ticket.customerName || ticket.customerEmail}</span>
                   <span>{formatDate(ticket.createdAt)}</span>

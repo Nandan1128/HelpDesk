@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SortingState } from '@tanstack/react-table';
 import { api } from '@/lib/api';
 import {
@@ -51,6 +52,7 @@ interface TicketListResponse {
 }
 
 export function TicketsPage() {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [metrics, setMetrics] = useState<TicketMetrics>({
     total: 0,
@@ -372,6 +374,7 @@ export function TicketsPage() {
         sortOrder={sortOrder}
         onToggleSort={handleToggleSort}
         onClearFilters={handleClearFilters}
+        onSelectTicket={(ticket) => navigate(`/tickets/${ticket.ticketNumber}`)}
       />
 
       {/* Pagination Controls */}

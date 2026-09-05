@@ -151,4 +151,49 @@ describe('Ticket Routes & Logic Tests (GET /api/tickets)', () => {
     expect(searchResults.length).toBe(1);
     expect(searchResults[0].subject).toContain('Middle Ticket');
   });
+
+  test('GET /api/tickets/agents rejects unauthenticated requests with 401', async () => {
+    const res = await fetch(`${baseUrl}/api/tickets/agents`);
+    expect(res.status).toBe(401);
+  });
+
+  test('PATCH /api/tickets/:id rejects unauthenticated requests with 401', async () => {
+    const res = await fetch(`${baseUrl}/api/tickets/${createdTicketIds[0]}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: TicketStatus.RESOLVED }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  test('POST /api/tickets/:id/messages rejects unauthenticated requests with 401', async () => {
+    const res = await fetch(`${baseUrl}/api/tickets/${createdTicketIds[0]}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: 'Test response message' }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  test('Ticket Details: Retrieves single ticket with messages and relation details', async () => {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: createdTicketIds[0] },
+      include: {
+        assignedTo: { select: { id: true, name: true, email: true } },
+        messages: { orderBy: { createdAt: 'asc' } },
+      },
+    });
+
+    expect(ticket).not.toBeNull();
+    expect(ticket?.id).toBe(createdTicketIds[0]);
+    expect(Array.isArray(ticket?.messages)).toBe(true);
+
+    // Also verify retrieval by numeric ticketNumber
+    const ticketByNumber = await prisma.ticket.findUnique({
+      where: { ticketNumber: ticket!.ticketNumber },
+    });
+    expect(ticketByNumber).not.toBeNull();
+    expect(ticketByNumber?.id).toBe(ticket?.id);
+  });
 });
+

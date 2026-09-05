@@ -1,9 +1,18 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { TicketsPage } from '../TicketsPage';
 import { api } from '@/lib/api';
 import { TicketItem } from '@/components/TicketTable';
+
+const renderTicketsPage = () => {
+  return render(
+    <MemoryRouter>
+      <TicketsPage />
+    </MemoryRouter>
+  );
+};
 
 const mockTickets: TicketItem[] = [
   {
@@ -77,7 +86,7 @@ describe('TicketsPage Component Tests', () => {
 
   describe('1. Initial Load & Layout Header', () => {
     it('renders the page title, description, and newest first badge', async () => {
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       expect(screen.getByRole('heading', { level: 1, name: /support tickets/i })).toBeInTheDocument();
       expect(screen.getByText(/sorted by newest first/i)).toBeInTheDocument();
@@ -96,7 +105,7 @@ describe('TicketsPage Component Tests', () => {
     });
 
     it('renders the KPI metric cards with correct values', async () => {
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       await waitFor(() => {
         expect(screen.getByText('Total Tickets')).toBeInTheDocument();
@@ -110,7 +119,7 @@ describe('TicketsPage Component Tests', () => {
 
   describe('2. Table Rendering & Ticket Display', () => {
     it('renders the tickets list sorted newest first', async () => {
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       await waitFor(() => {
         expect(screen.getAllByText(/Payment failed on invoice/i).length).toBeGreaterThan(0);
@@ -129,7 +138,7 @@ describe('TicketsPage Component Tests', () => {
     });
 
     it('displays status and priority badges accurately', async () => {
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       await waitFor(() => {
         expect(screen.getAllByText('Open').length).toBeGreaterThan(0);
@@ -140,12 +149,24 @@ describe('TicketsPage Component Tests', () => {
       expect(screen.getAllByText('High').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Low').length).toBeGreaterThan(0);
     });
+
+    it('renders clickable links for ticket subjects leading to /tickets/:ticketNumber', async () => {
+      renderTicketsPage();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('ticket-subject-103')).toBeInTheDocument();
+      });
+
+      const subjectLink = screen.getByTestId('ticket-subject-103');
+      expect(subjectLink).toHaveAttribute('href', '/tickets/103');
+      expect(subjectLink).toHaveTextContent('Newest Issue: Payment failed on invoice');
+    });
   });
 
   describe('3. Filtering & Search', () => {
     it('sends search parameter when user enters search query', async () => {
       const user = userEvent.setup();
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       const searchInput = screen.getByPlaceholderText(/search by subject/i);
       await user.type(searchInput, 'Payment');
@@ -164,7 +185,7 @@ describe('TicketsPage Component Tests', () => {
 
     it('filters by status when clicking status tabs', async () => {
       const user = userEvent.setup();
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       const resolvedTab = screen.getByRole('button', { name: /^resolved$/i });
       await user.click(resolvedTab);
@@ -182,7 +203,7 @@ describe('TicketsPage Component Tests', () => {
     });
 
     it('filters by priority when selecting priority dropdown', async () => {
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       const prioritySelect = screen.getByRole('combobox');
       fireEvent.change(prioritySelect, { target: { value: 'URGENT' } });
@@ -203,7 +224,7 @@ describe('TicketsPage Component Tests', () => {
   describe('4. Sorting Controls', () => {
     it('toggles sort order when clicking a sort header', async () => {
       const user = userEvent.setup();
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       await waitFor(() => {
         expect(screen.getAllByText('#103').length).toBeGreaterThan(0);
@@ -237,7 +258,7 @@ describe('TicketsPage Component Tests', () => {
         },
       } as any);
 
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       await waitFor(() => {
         expect(screen.getByText(/no tickets in the queue/i)).toBeInTheDocument();
@@ -247,7 +268,7 @@ describe('TicketsPage Component Tests', () => {
     it('displays error alert when API fetch fails', async () => {
       vi.spyOn(api, 'get').mockRejectedValueOnce(new Error('Network connection timeout'));
 
-      render(<TicketsPage />);
+      renderTicketsPage();
 
       await waitFor(() => {
         expect(screen.getByText(/network connection timeout/i)).toBeInTheDocument();

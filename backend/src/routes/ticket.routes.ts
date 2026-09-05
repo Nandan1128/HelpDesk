@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
-import { Prisma, TicketStatus, TicketCategory, Priority } from '@prisma/client';
+import { Prisma, TicketStatus, TicketCategory, Priority, SenderType } from '@prisma/client';
+import { z } from 'zod';
 import { prisma } from '../db/prisma.js';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
 
@@ -168,15 +169,51 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
 });
 
 /**
+ * GET /api/tickets/agents
+ * Returns list of active agents and admins who can be assigned tickets.
+ */
+router.get('/agents', requireAuth, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const agents = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    return res.json({ agents });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch agents';
+    console.error('[Agents List Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
  * GET /api/tickets/:id
  * Returns single ticket details with messages.
+ * Supports lookup by numeric ticketNumber (e.g. 101) or UUID.
  */
 router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 
+    const isNumeric = /^\d+$/.test(id);
+    const where: Prisma.TicketWhereUniqueInput = isNumeric
+      ? { ticketNumber: parseInt(id, 10) }
+      : { id };
+
     const ticket = await prisma.ticket.findUnique({
-      where: { id },
+      where,
       include: {
         assignedTo: {
           select: {
@@ -201,6 +238,166 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response)
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch ticket details';
     console.error('[Ticket Details Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * PATCH /api/tickets/:id
+ * Updates ticket metadata (status, priority, category, assignedToId).
+ * Supports lookup by numeric ticketNumber or UUID.
+ */
+router.patch('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const updateTicketSchema = z.object({
+      status: z.nativeEnum(TicketStatus).optional(),
+      priority: z.nativeEnum(Priority).optional(),
+      category: z.nativeEnum(TicketCategory).optional(),
+      assignedToId: z.string().nullable().optional(),
+    });
+
+    const parseResult = updateTicketSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: parseResult.error.errors[0]?.message || 'Invalid ticket update data',
+      });
+    }
+
+    const { status, priority, category, assignedToId } = parseResult.data;
+
+    const isNumeric = /^\d+$/.test(id);
+    const where: Prisma.TicketWhereUniqueInput = isNumeric
+      ? { ticketNumber: parseInt(id, 10) }
+      : { id };
+
+    const existingTicket = await prisma.ticket.findUnique({
+      where,
+    });
+
+    if (!existingTicket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    if (assignedToId) {
+      const agent = await prisma.user.findFirst({
+        where: { id: assignedToId, deletedAt: null },
+      });
+      if (!agent) {
+        return res.status(400).json({ error: 'Assigned agent not found or inactive' });
+      }
+    }
+
+    const updatedTicket = await prisma.ticket.update({
+      where: { id: existingTicket.id },
+      data: {
+        ...(status !== undefined && { status }),
+        ...(priority !== undefined && { priority }),
+        ...(category !== undefined && { category }),
+        ...(assignedToId !== undefined && { assignedToId }),
+      },
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        messages: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    return res.json({ ticket: updatedTicket });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to update ticket';
+    console.error('[Update Ticket Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * POST /api/tickets/:id/messages
+ * Appends a message/reply to a ticket from an agent or admin.
+ * Supports lookup by numeric ticketNumber or UUID.
+ */
+router.post('/:id/messages', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const createMessageSchema = z.object({
+      body: z.string().trim().min(1, 'Message body cannot be empty'),
+      status: z.nativeEnum(TicketStatus).optional(),
+    });
+
+    const parseResult = createMessageSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: parseResult.error.errors[0]?.message || 'Invalid message data',
+      });
+    }
+
+    const { body, status } = parseResult.data;
+
+    const isNumeric = /^\d+$/.test(id);
+    const where: Prisma.TicketWhereUniqueInput = isNumeric
+      ? { ticketNumber: parseInt(id, 10) }
+      : { id };
+
+    const existingTicket = await prisma.ticket.findUnique({
+      where,
+    });
+
+    if (!existingTicket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    const user = req.user;
+    const [newMessage, updatedTicket] = await prisma.$transaction([
+      prisma.message.create({
+        data: {
+          ticketId: existingTicket.id,
+          senderType: SenderType.AGENT,
+          senderEmail: user?.email || 'support@ticketai.local',
+          senderName: user?.name || 'Support Agent',
+          body,
+        },
+      }),
+      prisma.ticket.update({
+        where: { id: existingTicket.id },
+        data: {
+          updatedAt: new Date(),
+          ...(status ? { status } : {}),
+        },
+        include: {
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          messages: {
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+        },
+      }),
+    ]);
+
+    return res.status(201).json({
+      message: newMessage,
+      ticket: updatedTicket,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to post message';
+    console.error('[Post Message Error]:', error);
     return res.status(500).json({ error: message });
   }
 });
