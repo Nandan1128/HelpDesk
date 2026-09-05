@@ -69,7 +69,7 @@ describe('TicketsPage Component Tests', () => {
     vi.spyOn(api, 'get').mockResolvedValue({
       data: {
         tickets: mockTickets,
-        pagination: { total: 3, page: 1, limit: 25, totalPages: 1 },
+        pagination: { total: 3, page: 1, limit: 10, totalPages: 1 },
         metrics: mockMetrics,
       },
     } as any);
@@ -232,7 +232,7 @@ describe('TicketsPage Component Tests', () => {
       vi.spyOn(api, 'get').mockResolvedValueOnce({
         data: {
           tickets: [],
-          pagination: { total: 0, page: 1, limit: 25, totalPages: 0 },
+          pagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
           metrics: { total: 0, open: 0, resolved: 0, closed: 0, unassigned: 0, urgentOrHigh: 0 },
         },
       } as any);

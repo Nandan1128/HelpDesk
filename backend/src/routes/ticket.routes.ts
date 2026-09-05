@@ -22,7 +22,7 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
       sortBy = 'createdAt',
       sortOrder = 'desc',
       page = '1',
-      limit = '25',
+      limit = '10',
     } = req.query;
 
     const searchTerm = (typeof search === 'string' ? search : typeof q === 'string' ? q : '')?.trim();
@@ -32,7 +32,7 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
     const assignedToFilter = typeof assignedTo === 'string' ? assignedTo.trim() : undefined;
 
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 25));
+    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 10));
     const skip = (pageNum - 1) * limitNum;
 
     const where: Prisma.TicketWhereInput = {};
