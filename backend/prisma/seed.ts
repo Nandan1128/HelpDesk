@@ -3,6 +3,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import { PrismaClient, Role, TicketStatus, TicketCategory, Priority, SenderType } from '@prisma/client';
 import { hashPassword } from 'better-auth/crypto';
+import { REAL_LIFE_TICKETS } from './ticket-seed-data.js';
 
 if (process.env.NODE_ENV === 'test') {
   const possibleTestEnvPaths = [
@@ -155,103 +156,53 @@ async function main() {
   });
   console.log(`✅ Seeded ${3} Knowledge Base Articles`);
 
-  // 5. Seed Sample Tickets & Messages
-  const ticket1 = await prisma.ticket.create({
-    data: {
-      subject: 'Refund requested for annual renewal',
-      customerEmail: 'john.doe@example.com',
-      customerName: 'John Doe',
-      category: TicketCategory.REFUND_REQUEST,
-      status: TicketStatus.OPEN,
-      priority: Priority.HIGH,
-      assignedToId: agent1.id,
-      aiSummary: 'Customer was charged for annual subscription renewal 2 days ago and wants a full refund because their team migrated to another solution.',
-      aiSuggestedReply: `Hi John,
+  // 5. Seed 100 Real-Life Diverse Tickets & Messages
+  console.log(`🌱 Seeding ${REAL_LIFE_TICKETS.length} diverse real-life support tickets...`);
+  const agents = [agentExample, agent1];
+  const now = Date.now();
 
-Thank you for reaching out. I would be happy to help you with this!
+  for (let i = 0; i < REAL_LIFE_TICKETS.length; i++) {
+    const seed = REAL_LIFE_TICKETS[i];
+    // Calculate staggered createdAt from daysAgo, plus a few minutes jitter based on index
+    const createdAt = new Date(now - seed.daysAgo * 24 * 60 * 60 * 1000 - i * 180 * 1000);
+    const assignedAgent = seed.assignedAgentIndex !== null ? agents[seed.assignedAgentIndex] : null;
 
-Since your annual subscription renewal occurred within the last 30 days, your account is fully eligible for a full refund under our 30-day refund guarantee. I have initiated the refund process, and the funds should appear back on your original payment card within 3-5 business days.
+    const messagesCreate = seed.messages.map((m, msgIdx) => {
+      const isAgent = m.senderType === SenderType.AGENT;
+      const senderEmail = isAgent ? (assignedAgent?.email || agent1.email) : seed.customerEmail;
+      const senderName = isAgent ? (assignedAgent?.name || agent1.name) : seed.customerName;
+      const msgCreatedAt = new Date(createdAt.getTime() + (msgIdx + 1) * 20 * 60 * 1000);
 
-Please let me know if you need anything else!
+      return {
+        senderType: m.senderType,
+        senderEmail,
+        senderName,
+        body: m.body,
+        createdAt: msgCreatedAt,
+      };
+    });
 
-Best regards,
-Support Team`,
-      messages: {
-        create: [
-          {
-            senderType: SenderType.CUSTOMER,
-            senderEmail: 'john.doe@example.com',
-            senderName: 'John Doe',
-            body: 'Hello, I noticed an automatic renewal charge on my credit card yesterday for $240. We migrated to a different workflow last month and no longer need the seat. Could you please cancel and issue a refund?',
-          },
-        ],
+    await prisma.ticket.create({
+      data: {
+        subject: seed.subject,
+        customerEmail: seed.customerEmail,
+        customerName: seed.customerName,
+        category: seed.category,
+        status: seed.status,
+        priority: seed.priority,
+        assignedToId: assignedAgent ? assignedAgent.id : null,
+        aiSummary: seed.aiSummary,
+        aiSuggestedReply: seed.aiSuggestedReply,
+        createdAt,
+        updatedAt: createdAt,
+        messages: {
+          create: messagesCreate,
+        },
       },
-    },
-  });
+    });
+  }
 
-  const ticket2 = await prisma.ticket.create({
-    data: {
-      subject: 'Cannot login with 2FA code',
-      customerEmail: 'mary.smith@company.io',
-      customerName: 'Mary Smith',
-      category: TicketCategory.TECHNICAL_QUESTION,
-      status: TicketStatus.OPEN,
-      priority: Priority.URGENT,
-      assignedToId: agent2.id,
-      aiSummary: 'Customer lost access to authenticator app on new phone and cannot complete two-factor authentication.',
-      aiSuggestedReply: `Hi Mary,
-
-Sorry to hear you are having trouble logging in!
-
-If you switched phones and lost access to your authenticator app, you can log in using one of the 16-character backup recovery codes generated when 2FA was initially set up. 
-
-If you do not have your recovery codes handy, please reply to this email confirming your account billing address, and we will guide you through identity verification to reset your 2FA.
-
-Best regards,
-Support Team`,
-      messages: {
-        create: [
-          {
-            senderType: SenderType.CUSTOMER,
-            senderEmail: 'mary.smith@company.io',
-            senderName: 'Mary Smith',
-            body: 'Hi, I got a new phone over the weekend and my Google Authenticator codes are gone. Now I am locked out of my dashboard. Please help!',
-          },
-        ],
-      },
-    },
-  });
-
-  const ticket3 = await prisma.ticket.create({
-    data: {
-      subject: 'How do I download past invoices for tax purposes?',
-      customerEmail: 'finance@startup.co',
-      customerName: 'Dave Miller',
-      category: TicketCategory.GENERAL_QUESTION,
-      status: TicketStatus.RESOLVED,
-      priority: Priority.LOW,
-      assignedToId: agent1.id,
-      aiSummary: 'Customer asked where to download tax invoices for 2025.',
-      aiSuggestedReply: 'Hi Dave, you can download all past invoices directly under Settings > Billing in your account dashboard.',
-      messages: {
-        create: [
-          {
-            senderType: SenderType.CUSTOMER,
-            senderEmail: 'finance@startup.co',
-            senderName: 'Dave Miller',
-            body: 'Where can I find PDF copies of our invoices for the previous fiscal year?',
-          },
-          {
-            senderType: SenderType.AGENT,
-            senderEmail: agent1.email,
-            senderName: agent1.name,
-            body: 'Hi Dave,\n\nYou can access and download all historical PDF invoices anytime by going to Settings > Billing and clicking "Download Invoices". Let us know if you need anything else!\n\nBest regards,\nSarah',
-          },
-        ],
-      },
-    },
-  });
-  console.log(`✅ Seeded ${3} initial tickets with conversation messages`);
+  console.log(`✅ Seeded ${REAL_LIFE_TICKETS.length} diverse tickets with conversation threads`);
 
   console.log('🎉 Database seeding completed successfully!');
 }

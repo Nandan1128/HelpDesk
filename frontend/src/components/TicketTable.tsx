@@ -1,3 +1,12 @@
+import { useMemo, useCallback } from 'react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  flexRender,
+  ColumnDef,
+  SortingState,
+  OnChangeFn,
+} from '@tanstack/react-table';
 import {
   Ticket,
   ArrowUpDown,
@@ -64,9 +73,19 @@ export interface TicketTableProps {
   isFiltered?: boolean;
   sortBy?: TicketSortField;
   sortOrder?: TicketSortOrder;
+  sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
   onToggleSort?: (field: TicketSortField) => void;
   onClearFilters?: () => void;
   onSelectTicket?: (ticket: TicketItem) => void;
+}
+
+declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    headerClassName?: string;
+    cellClassName?: string;
+  }
 }
 
 export function TicketTable({
@@ -75,6 +94,8 @@ export function TicketTable({
   isFiltered = false,
   sortBy = 'createdAt',
   sortOrder = 'desc',
+  sorting,
+  onSortingChange,
   onToggleSort,
   onClearFilters,
   onSelectTicket,
@@ -188,16 +209,227 @@ export function TicketTable({
     }
   };
 
-  const renderSortIcon = (field: TicketSortField) => {
-    const isActive = sortBy === field;
+  const renderSortIcon = (isSorted: false | 'asc' | 'desc') => {
+    const isActive = Boolean(isSorted);
     return (
       <ArrowUpDown
         className={`w-3.5 h-3.5 ml-1 inline-block transition-transform ${
           isActive ? 'text-primary' : 'opacity-40'
-        } ${isActive && sortOrder === 'desc' ? 'rotate-180' : ''}`}
+        } ${isSorted === 'desc' ? 'rotate-180' : ''}`}
       />
     );
   };
+
+  // Derive active sorting state from either sorting prop or sortBy/sortOrder
+  const currentSorting: SortingState = useMemo(() => {
+    if (sorting !== undefined) {
+      return sorting;
+    }
+    return [{ id: sortBy, desc: sortOrder === 'desc' }];
+  }, [sorting, sortBy, sortOrder]);
+
+  const handleSortingChange: OnChangeFn<SortingState> = useCallback(
+    (updaterOrValue) => {
+      if (onSortingChange) {
+        onSortingChange(updaterOrValue);
+      } else if (onToggleSort) {
+        const nextSorting =
+          typeof updaterOrValue === 'function'
+            ? updaterOrValue(currentSorting)
+            : updaterOrValue;
+        if (nextSorting.length > 0) {
+          onToggleSort(nextSorting[0].id as TicketSortField);
+        }
+      }
+    },
+    [currentSorting, onSortingChange, onToggleSort]
+  );
+
+  const columns = useMemo<ColumnDef<TicketItem>[]>(
+    () => [
+      {
+        id: 'ticketNumber',
+        accessorKey: 'ticketNumber',
+        enableSorting: true,
+        sortDescFirst: true,
+        header: ({ column }) => (
+          <button
+            type="button"
+            onClick={column.getToggleSortingHandler()}
+            className="flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            Ticket # {renderSortIcon(column.getIsSorted())}
+          </button>
+        ),
+        cell: ({ row }) => (
+          <span className="bg-muted px-2 py-0.5 rounded border border-border">
+            #{row.original.ticketNumber}
+          </span>
+        ),
+        meta: {
+          headerClassName: 'w-[90px]',
+          cellClassName: 'font-mono font-bold text-xs text-muted-foreground',
+        },
+      },
+      {
+        id: 'subject',
+        accessorKey: 'subject',
+        enableSorting: true,
+        sortDescFirst: true,
+        header: ({ column }) => (
+          <button
+            type="button"
+            onClick={column.getToggleSortingHandler()}
+            className="flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            Subject & Customer {renderSortIcon(column.getIsSorted())}
+          </button>
+        ),
+        cell: ({ row }) => {
+          const ticket = row.original;
+          return (
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center space-x-2">
+                <span className="font-semibold text-sm text-foreground hover:text-primary transition-colors line-clamp-1">
+                  {ticket.subject}
+                </span>
+                {ticket._count && ticket._count.messages > 1 && (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] px-1.5 py-0 h-4 gap-0.5 font-medium text-muted-foreground"
+                    title={`${ticket._count.messages} messages in thread`}
+                  >
+                    <MessageSquare className="w-2.5 h-2.5" />
+                    {ticket._count.messages}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                {ticket.customerName && (
+                  <span className="font-medium text-foreground/80">
+                    {ticket.customerName}
+                  </span>
+                )}
+                <span className="truncate max-w-[220px]" title={ticket.customerEmail}>
+                  {ticket.customerEmail}
+                </span>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'status',
+        accessorKey: 'status',
+        enableSorting: true,
+        sortDescFirst: true,
+        header: ({ column }) => (
+          <button
+            type="button"
+            onClick={column.getToggleSortingHandler()}
+            className="flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            Status {renderSortIcon(column.getIsSorted())}
+          </button>
+        ),
+        cell: ({ row }) => getStatusBadge(row.original.status),
+        meta: {
+          headerClassName: 'w-[120px]',
+        },
+      },
+      {
+        id: 'priority',
+        accessorKey: 'priority',
+        enableSorting: true,
+        sortDescFirst: true,
+        header: ({ column }) => (
+          <button
+            type="button"
+            onClick={column.getToggleSortingHandler()}
+            className="flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            Priority {renderSortIcon(column.getIsSorted())}
+          </button>
+        ),
+        cell: ({ row }) => getPriorityBadge(row.original.priority),
+        meta: {
+          headerClassName: 'w-[110px]',
+        },
+      },
+      {
+        id: 'category',
+        accessorKey: 'category',
+        enableSorting: false,
+        header: () => <span className="text-xs font-semibold text-muted-foreground">Category</span>,
+        cell: ({ row }) => (
+          <span className="text-xs font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded border border-border">
+            {getCategoryLabel(row.original.category)}
+          </span>
+        ),
+        meta: {
+          headerClassName: 'w-[120px]',
+        },
+      },
+      {
+        id: 'assignedTo',
+        enableSorting: false,
+        header: () => <span className="text-xs font-semibold text-muted-foreground">Assigned To</span>,
+        cell: ({ row }) => {
+          const ticket = row.original;
+          return ticket.assignedTo ? (
+            <div className="flex items-center space-x-1.5 text-xs text-foreground font-medium">
+              <UserCheck className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+              <span className="truncate max-w-[110px]" title={ticket.assignedTo.name}>
+                {ticket.assignedTo.name}
+              </span>
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground/60 italic flex items-center gap-1">
+              <User className="w-3.5 h-3.5 opacity-40" />
+              Unassigned
+            </span>
+          );
+        },
+        meta: {
+          headerClassName: 'w-[140px]',
+        },
+      },
+      {
+        id: 'createdAt',
+        accessorKey: 'createdAt',
+        enableSorting: true,
+        sortDescFirst: true,
+        header: ({ column }) => (
+          <button
+            type="button"
+            onClick={column.getToggleSortingHandler()}
+            className="inline-flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer justify-end w-full"
+          >
+            Created {renderSortIcon(column.getIsSorted())}
+          </button>
+        ),
+        cell: ({ row }) => formatDate(row.original.createdAt),
+        meta: {
+          headerClassName: 'w-[160px] text-right',
+          cellClassName: 'text-right text-xs text-muted-foreground font-medium',
+        },
+      },
+    ],
+    []
+  );
+
+  // TanStack Table initialization with manual server-side sorting enabled
+  const table = useReactTable({
+    data: tickets,
+    columns,
+    state: {
+      sorting: currentSorting,
+    },
+    onSortingChange: handleSortingChange,
+    manualSorting: true,
+    enableSortingRemoval: false,
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   // Skeleton loading state
   if (loading) {
@@ -251,188 +483,95 @@ export function TicketTable({
       <div className="hidden md:block">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead className="w-[90px]">
-                <button
-                  type="button"
-                  onClick={() => onToggleSort?.('ticketNumber')}
-                  className="flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                >
-                  Ticket # {renderSortIcon('ticketNumber')}
-                </button>
-              </TableHead>
-              <TableHead>
-                <button
-                  type="button"
-                  onClick={() => onToggleSort?.('subject')}
-                  className="flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                >
-                  Subject & Customer {renderSortIcon('subject')}
-                </button>
-              </TableHead>
-              <TableHead className="w-[120px]">
-                <button
-                  type="button"
-                  onClick={() => onToggleSort?.('status')}
-                  className="flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                >
-                  Status {renderSortIcon('status')}
-                </button>
-              </TableHead>
-              <TableHead className="w-[110px]">
-                <button
-                  type="button"
-                  onClick={() => onToggleSort?.('priority')}
-                  className="flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                >
-                  Priority {renderSortIcon('priority')}
-                </button>
-              </TableHead>
-              <TableHead className="w-[120px]">Category</TableHead>
-              <TableHead className="w-[140px]">Assigned To</TableHead>
-              <TableHead className="w-[160px] text-right">
-                <button
-                  type="button"
-                  onClick={() => onToggleSort?.('createdAt')}
-                  className="inline-flex items-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer justify-end w-full"
-                >
-                  Created {renderSortIcon('createdAt')}
-                </button>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tickets.map((ticket) => (
-              <TableRow
-                key={ticket.id}
-                onClick={() => onSelectTicket?.(ticket)}
-                className={`hover:bg-muted/50 transition-colors ${
-                  onSelectTicket ? 'cursor-pointer' : ''
-                }`}
-                data-testid={`ticket-row-${ticket.id}`}
-              >
-                {/* Ticket Number */}
-                <TableCell className="font-mono font-bold text-xs text-muted-foreground">
-                  <span className="bg-muted px-2 py-0.5 rounded border border-border">
-                    #{ticket.ticketNumber}
-                  </span>
-                </TableCell>
-
-                {/* Subject & Customer Details */}
-                <TableCell>
-                  <div className="flex flex-col space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-semibold text-sm text-foreground hover:text-primary transition-colors line-clamp-1">
-                        {ticket.subject}
-                      </span>
-                      {ticket._count && ticket._count.messages > 1 && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] px-1.5 py-0 h-4 gap-0.5 font-medium text-muted-foreground"
-                          title={`${ticket._count.messages} messages in thread`}
-                        >
-                          <MessageSquare className="w-2.5 h-2.5" />
-                          {ticket._count.messages}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                      {ticket.customerName && (
-                        <span className="font-medium text-foreground/80">
-                          {ticket.customerName}
-                        </span>
-                      )}
-                      <span className="truncate max-w-[220px]" title={ticket.customerEmail}>
-                        {ticket.customerEmail}
-                      </span>
-                    </div>
-                  </div>
-                </TableCell>
-
-                {/* Status */}
-                <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-
-                {/* Priority */}
-                <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
-
-                {/* Category */}
-                <TableCell>
-                  <span className="text-xs font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded border border-border">
-                    {getCategoryLabel(ticket.category)}
-                  </span>
-                </TableCell>
-
-                {/* Assigned Agent */}
-                <TableCell>
-                  {ticket.assignedTo ? (
-                    <div className="flex items-center space-x-1.5 text-xs text-foreground font-medium">
-                      <UserCheck className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                      <span className="truncate max-w-[110px]" title={ticket.assignedTo.name}>
-                        {ticket.assignedTo.name}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground/60 italic flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 opacity-40" />
-                      Unassigned
-                    </span>
-                  )}
-                </TableCell>
-
-                {/* Created Date */}
-                <TableCell className="text-right text-xs text-muted-foreground font-medium">
-                  {formatDate(ticket.createdAt)}
-                </TableCell>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="bg-muted/40 hover:bg-muted/40">
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={header.column.columnDef.meta?.headerClassName}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => {
+              const ticket = row.original;
+              return (
+                <TableRow
+                  key={row.id}
+                  onClick={() => onSelectTicket?.(ticket)}
+                  className={`hover:bg-muted/50 transition-colors ${
+                    onSelectTicket ? 'cursor-pointer' : ''
+                  }`}
+                  data-testid={`ticket-row-${ticket.id}`}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={cell.column.columnDef.meta?.cellClassName}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
 
       {/* Mobile Card List View (Phones & Small Tablets) */}
       <div className="md:hidden divide-y divide-border">
-        {tickets.map((ticket) => (
-          <div
-            key={ticket.id}
-            onClick={() => onSelectTicket?.(ticket)}
-            className="p-4 space-y-3 hover:bg-muted/40 transition-colors"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-mono font-bold text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
-                #{ticket.ticketNumber}
-              </span>
-              <div className="flex items-center space-x-2">
-                {getPriorityBadge(ticket.priority)}
-                {getStatusBadge(ticket.status)}
+        {table.getRowModel().rows.map((row) => {
+          const ticket = row.original;
+          return (
+            <div
+              key={ticket.id}
+              onClick={() => onSelectTicket?.(ticket)}
+              className="p-4 space-y-3 hover:bg-muted/40 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-bold text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
+                  #{ticket.ticketNumber}
+                </span>
+                <div className="flex items-center space-x-2">
+                  {getPriorityBadge(ticket.priority)}
+                  {getStatusBadge(ticket.status)}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-foreground line-clamp-2">
+                  {ticket.subject}
+                </h4>
+                <div className="text-xs text-muted-foreground mt-1 flex items-center justify-between">
+                  <span>{ticket.customerName || ticket.customerEmail}</span>
+                  <span>{formatDate(ticket.createdAt)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 text-xs border-t border-border/50">
+                <span className="text-muted-foreground">
+                  Category: <strong className="text-foreground">{getCategoryLabel(ticket.category)}</strong>
+                </span>
+                <span>
+                  {ticket.assignedTo ? (
+                    <span className="text-emerald-600 font-medium">
+                      {ticket.assignedTo.name}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground/70 italic">Unassigned</span>
+                  )}
+                </span>
               </div>
             </div>
-
-            <div>
-              <h4 className="text-sm font-semibold text-foreground line-clamp-2">
-                {ticket.subject}
-              </h4>
-              <div className="text-xs text-muted-foreground mt-1 flex items-center justify-between">
-                <span>{ticket.customerName || ticket.customerEmail}</span>
-                <span>{formatDate(ticket.createdAt)}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-1 text-xs border-t border-border/50">
-              <span className="text-muted-foreground">
-                Category: <strong className="text-foreground">{getCategoryLabel(ticket.category)}</strong>
-              </span>
-              <span>
-                {ticket.assignedTo ? (
-                  <span className="text-emerald-600 font-medium">
-                    {ticket.assignedTo.name}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground/70 italic">Unassigned</span>
-                )}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );

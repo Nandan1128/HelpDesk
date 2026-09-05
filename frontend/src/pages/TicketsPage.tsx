@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { SortingState } from '@tanstack/react-table';
 import { api } from '@/lib/api';
 import {
   Ticket,
@@ -76,9 +77,18 @@ export function TicketsPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | TicketStatus>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | Priority>('ALL');
 
-  // Sorting state: Defaults to newest first (createdAt: desc)
-  const [sortBy, setSortBy] = useState<TicketSortField>('createdAt');
-  const [sortOrder, setSortOrder] = useState<TicketSortOrder>('desc');
+  // Sorting state: Defaults to newest first (createdAt: desc) using TanStack Table SortingState
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: 'createdAt', desc: true },
+  ]);
+
+  const sortBy = useMemo<TicketSortField>(() => {
+    return (sorting[0]?.id as TicketSortField) || 'createdAt';
+  }, [sorting]);
+
+  const sortOrder = useMemo<TicketSortOrder>(() => {
+    return sorting[0]?.desc ? 'desc' : 'asc';
+  }, [sorting]);
 
   const fetchTickets = useCallback(
     async (isManualRefresh = false, targetPage = pagination.page) => {
@@ -137,20 +147,20 @@ export function TicketsPage() {
   }, [debouncedSearchQuery, statusFilter, priorityFilter, sortBy, sortOrder]);
 
   const handleToggleSort = (field: TicketSortField) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
+    setSorting((prev) => {
+      const current = prev[0];
+      if (current && current.id === field) {
+        return [{ id: field, desc: !current.desc }];
+      }
+      return [{ id: field, desc: true }];
+    });
   };
 
   const handleClearFilters = () => {
     setSearchQuery('');
     setStatusFilter('ALL');
     setPriorityFilter('ALL');
-    setSortBy('createdAt');
-    setSortOrder('desc');
+    setSorting([{ id: 'createdAt', desc: true }]);
   };
 
   const isFiltered = useMemo(() => {
@@ -356,6 +366,8 @@ export function TicketsPage() {
         tickets={tickets}
         loading={loading}
         isFiltered={isFiltered}
+        sorting={sorting}
+        onSortingChange={setSorting}
         sortBy={sortBy}
         sortOrder={sortOrder}
         onToggleSort={handleToggleSort}

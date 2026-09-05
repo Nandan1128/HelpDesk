@@ -88,7 +88,7 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
     }
 
     // Sorting: default to newest first (createdAt: desc)
-    const validSortFields = ['createdAt', 'updatedAt', 'ticketNumber', 'priority', 'status', 'subject'];
+    const validSortFields = ['createdAt', 'updatedAt', 'ticketNumber', 'priority', 'status', 'subject', 'category'];
     const sortField = validSortFields.includes(String(sortBy)) ? String(sortBy) : 'createdAt';
     const orderDirection: Prisma.SortOrder = String(sortOrder).toLowerCase() === 'asc' ? 'asc' : 'desc';
 
