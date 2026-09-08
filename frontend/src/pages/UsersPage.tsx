@@ -14,10 +14,14 @@ import {
   Filter,
   UserPlus,
 } from 'lucide-react';
-import { CreateUserModal } from '@/components/CreateUserModal';
-import { EditUserModal } from '@/components/EditUserModal';
-import { DeleteUserModal } from '@/components/DeleteUserModal';
-import { UserTable, UserItem, UserSortField } from '@/components/UserTable';
+import {
+  UserTable,
+  CreateUserModal,
+  EditUserModal,
+  DeleteUserModal,
+  UserItem,
+  UserSortField,
+} from '@/components/users';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Card,

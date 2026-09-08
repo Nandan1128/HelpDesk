@@ -27,36 +27,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-export interface UserItem {
-  id: string;
-  name: string;
-  email: string;
-  emailVerified: boolean;
-  image?: string | null;
-  role: 'ADMIN' | 'AGENT';
-  isActive: boolean;
-  deletedAt?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  _count?: {
-    assignedTickets: number;
-  };
-}
-
-export type UserSortField = 'createdAt' | 'name' | 'email' | 'role';
-export type UserSortOrder = 'asc' | 'desc';
-
-export interface UserTableProps {
-  users: UserItem[];
-  loading?: boolean;
-  isFiltered?: boolean;
-  sortBy?: UserSortField;
-  sortOrder?: UserSortOrder;
-  onToggleSort?: (field: UserSortField) => void;
-  onClearFilters?: () => void;
-  onEditUser?: (user: UserItem) => void;
-  onDeleteUser?: (user: UserItem) => void;
-}
+import type {
+  UserSortField,
+  UserTableProps,
+} from './types';
 
 export function UserTable({
   users,

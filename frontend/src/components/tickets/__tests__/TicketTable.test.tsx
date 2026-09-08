@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
-import { TicketTable, TicketItem } from '../TicketTable';
+import { TicketTable } from '../TicketTable';
+import type { TicketItem } from '../types';
 
 const mockTickets: TicketItem[] = [
   {

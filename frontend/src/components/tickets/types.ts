@@ -43,3 +43,34 @@ export interface AgentUser {
   email: string;
   role: string;
 }
+
+export interface TicketItem {
+  id: string;
+  ticketNumber: number;
+  subject: string;
+  status: TicketStatus;
+  category: TicketCategory;
+  priority: Priority;
+  customerEmail: string;
+  customerName?: string | null;
+  assignedTo?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  _count?: {
+    messages: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TicketSortField =
+  | 'createdAt'
+  | 'updatedAt'
+  | 'ticketNumber'
+  | 'priority'
+  | 'status'
+  | 'subject';
+
+export type TicketSortOrder = 'asc' | 'desc';

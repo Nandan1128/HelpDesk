@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  UserCheck,
+  UserPlus,
   User,
   Mail,
   Lock,
@@ -18,9 +18,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UserItem } from './UserTable';
 
-const editUserSchema = z.object({
+const createUserSchema = z.object({
   name: z
     .string()
     .trim()
@@ -33,27 +32,18 @@ const editUserSchema = z.object({
   password: z
     .string()
     .trim()
-    .refine((val) => val === '' || val.length >= 8, {
-      message: 'Password must be at least 8 characters',
-    })
-    .optional(),
+    .min(8, 'Password must be at least 8 characters'),
 });
 
-type EditUserFormValues = z.infer<typeof editUserSchema>;
+type CreateUserFormValues = z.infer<typeof createUserSchema>;
 
-export interface EditUserModalProps {
-  isOpen: boolean;
-  user: UserItem | null;
-  onClose: () => void;
-  onUserUpdated?: () => void;
-}
+import type { CreateUserModalProps } from './types';
 
-export function EditUserModal({
+export function CreateUserModal({
   isOpen,
-  user,
   onClose,
-  onUserUpdated,
-}: EditUserModalProps) {
+  onUserCreated,
+}: CreateUserModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -62,28 +52,24 @@ export function EditUserModal({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<EditUserFormValues>({
-    resolver: zodResolver(editUserSchema),
+  } = useForm<CreateUserFormValues>({
+    resolver: zodResolver(createUserSchema),
     defaultValues: {
-      name: user?.name || '',
-      email: user?.email || '',
+      name: '',
+      email: '',
       password: '',
     },
     mode: 'onTouched',
   });
 
-  // Re-populate form when user or isOpen changes
+  // Reset form and errors when modal closes or opens
   useEffect(() => {
-    if (isOpen && user) {
-      reset({
-        name: user.name,
-        email: user.email,
-        password: '',
-      });
+    if (isOpen) {
+      reset();
       setServerError(null);
       setShowPassword(false);
     }
-  }, [isOpen, user, reset]);
+  }, [isOpen, reset]);
 
   // Handle ESC key press
   useEffect(() => {
@@ -102,33 +88,28 @@ export function EditUserModal({
     };
   }, [isOpen, isSubmitting, onClose]);
 
-  if (!isOpen || !user) return null;
+  if (!isOpen) return null;
 
-  const onSubmit = async (values: EditUserFormValues) => {
+  const onSubmit = async (values: CreateUserFormValues) => {
     setServerError(null);
 
-    const payload: Record<string, any> = {
-      name: values.name.trim(),
-      email: values.email.trim(),
-    };
-
-    if (values.password && values.password.trim().length >= 8) {
-      payload.password = values.password.trim();
-    }
-
     try {
-      await api.patch(`/users/${user.id}`, payload);
+      await api.post('/users', {
+        name: values.name.trim(),
+        email: values.email.trim(),
+        password: values.password,
+      });
 
       reset();
       onClose();
-      if (onUserUpdated) {
-        onUserUpdated();
+      if (onUserCreated) {
+        onUserCreated();
       }
     } catch (err: any) {
       const message =
         err?.response?.data?.error ||
         err?.message ||
-        'Failed to update user. Please check your connection.';
+        'Failed to create user. Please check your connection.';
       setServerError(message);
     }
   };
@@ -138,7 +119,7 @@ export function EditUserModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
       aria-modal="true"
       role="dialog"
-      aria-labelledby="edit-user-modal-title"
+      aria-labelledby="create-user-modal-title"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isSubmitting) {
           onClose();
@@ -153,17 +134,17 @@ export function EditUserModal({
         <div className="flex items-start justify-between p-6 border-b border-border/80">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-              <UserCheck className="w-5 h-5" />
+              <UserPlus className="w-5 h-5" />
             </div>
             <div>
               <h2
-                id="edit-user-modal-title"
+                id="create-user-modal-title"
                 className="text-lg font-bold tracking-tight text-foreground"
               >
-                Edit User
+                Create New User
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Update account details for {user.name}.
+                Add a new user account to the system.
               </p>
             </div>
           </div>
@@ -195,16 +176,17 @@ export function EditUserModal({
 
           {/* Name Field */}
           <div className="space-y-1.5">
-            <Label htmlFor="edit-user-name">Full Name</Label>
+            <Label htmlFor="create-user-name">Full Name</Label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
                 <User className="w-4 h-4" />
               </div>
               <Input
-                id="edit-user-name"
+                id="create-user-name"
                 type="text"
                 placeholder="e.g. John Doe"
                 autoComplete="name"
+                autoFocus
                 {...register('name')}
                 className={`pl-9 ${
                   errors.name
@@ -224,13 +206,13 @@ export function EditUserModal({
 
           {/* Email Field */}
           <div className="space-y-1.5">
-            <Label htmlFor="edit-user-email">Email Address</Label>
+            <Label htmlFor="create-user-email">Email Address</Label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
                 <Mail className="w-4 h-4" />
               </div>
               <Input
-                id="edit-user-email"
+                id="create-user-email"
                 type="email"
                 placeholder="e.g. john.doe@example.com"
                 autoComplete="email"
@@ -253,18 +235,15 @@ export function EditUserModal({
 
           {/* Password Field */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="edit-user-password">Password</Label>
-              <span className="text-[11px] text-muted-foreground">Optional</span>
-            </div>
+            <Label htmlFor="create-user-password">Password</Label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
                 <Lock className="w-4 h-4" />
               </div>
               <Input
-                id="edit-user-password"
+                id="create-user-password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Leave blank to keep current password"
+                placeholder="At least 8 characters"
                 autoComplete="new-password"
                 {...register('password')}
                 className={`pl-9 pr-10 ${
@@ -284,14 +263,10 @@ export function EditUserModal({
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            {errors.password ? (
+            {errors.password && (
               <p className="text-xs text-destructive flex items-center gap-1 font-medium mt-1">
                 <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                 <span>{errors.password.message}</span>
-              </p>
-            ) : (
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Leave blank to keep current password. If entered, must be at least 8 characters.
               </p>
             )}
           </div>
@@ -317,12 +292,12 @@ export function EditUserModal({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Saving...</span>
+                  <span>Creating...</span>
                 </>
               ) : (
                 <>
-                  <UserCheck className="w-4 h-4" />
-                  <span>Save Changes</span>
+                  <UserPlus className="w-4 h-4" />
+                  <span>Create User</span>
                 </>
               )}
             </Button>
@@ -333,4 +308,4 @@ export function EditUserModal({
   );
 }
 
-export default EditUserModal;
+export default CreateUserModal;

@@ -11,7 +11,7 @@ import {
   BookOpen,
   Loader2,
 } from 'lucide-react';
-import { signOut, useSession, AuthUser } from '../lib/auth-client';
+import { signOut, useSession, AuthUser } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 

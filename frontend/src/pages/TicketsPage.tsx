@@ -20,7 +20,7 @@ import {
   TicketSortOrder,
   TicketStatus,
   Priority,
-} from '@/components/TicketTable';
+} from '@/components/tickets';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   Card,

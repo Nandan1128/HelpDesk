@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { TicketsPage } from '../TicketsPage';
 import { api } from '@/lib/api';
-import { TicketItem } from '@/components/TicketTable';
+import { TicketItem } from '@/components/tickets';
 
 const renderTicketsPage = () => {
   return render(

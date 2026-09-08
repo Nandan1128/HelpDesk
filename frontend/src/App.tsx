@@ -1,13 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { AdminRoute } from './components/AdminRoute';
-import { PublicRoute } from './components/PublicRoute';
-import { Layout } from './components/Layout';
-import { LoginPage } from './pages/LoginPage';
-import { HomePage } from './pages/HomePage';
-import { UsersPage } from './pages/UsersPage';
-import { TicketsPage } from './pages/TicketsPage';
-import { TicketDetailPage } from './pages/TicketDetailPage';
+import { ProtectedRoute, AdminRoute, PublicRoute } from '@/components/auth';
+import { Layout } from '@/components/layout';
+import {
+  HomePage,
+  LoginPage,
+  TicketsPage,
+  TicketDetailPage,
+  UsersPage,
+} from '@/pages';
 
 export function App() {
   return (

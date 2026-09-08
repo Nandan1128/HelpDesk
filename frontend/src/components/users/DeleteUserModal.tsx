@@ -11,14 +11,7 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UserItem } from './UserTable';
-
-export interface DeleteUserModalProps {
-  isOpen: boolean;
-  user: UserItem | null;
-  onClose: () => void;
-  onUserDeleted?: () => void;
-}
+import type { DeleteUserModalProps } from './types';
 
 export function DeleteUserModal({
   isOpen,

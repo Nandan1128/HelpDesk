@@ -7,9 +7,7 @@ import { env } from './config/env.js';
 import { prisma } from './db/prisma.js';
 import { auth } from './lib/auth.js';
 import { requireAuth, requireRole, AuthenticatedRequest } from './middleware/auth.middleware.js';
-import userRoutes from './routes/user.routes.js';
-import emailRoutes from './routes/email.routes.js';
-import ticketRoutes from './routes/ticket.routes.js';
+import { userRoutes, emailRoutes, ticketRoutes } from './routes/index.js';
 
 const app = express();
 

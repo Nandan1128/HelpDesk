@@ -1,8 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Bot, Loader2 } from 'lucide-react';
-import { useSession, AuthUser } from '../lib/auth-client';
+import { useSession, AuthUser } from '@/lib/auth-client';
 
-export function ProtectedRoute() {
+export function PublicRoute() {
   const { data: session, isPending } = useSession();
   const location = useLocation();
 
@@ -15,23 +15,20 @@ export function ProtectedRoute() {
           </div>
           <div className="flex items-center space-x-2 text-muted-foreground text-sm font-medium">
             <Loader2 className="w-4 h-4 animate-spin text-primary" />
-            <span>Verifying session...</span>
+            <span>Loading...</span>
           </div>
         </div>
       </div>
     );
   }
 
-  if (!session?.user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  const user = session.user as AuthUser;
-  if (user.isActive === false || user.deletedAt) {
-    return <Navigate to="/login" state={{ error: 'Account has been deactivated' }} replace />;
+  const user = session?.user as AuthUser | undefined;
+  if (user && user.isActive !== false && !user.deletedAt) {
+    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+    return <Navigate to={from} replace />;
   }
 
   return <Outlet />;
 }
 
-export default ProtectedRoute;
+export default PublicRoute;

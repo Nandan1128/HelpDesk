@@ -33,40 +33,14 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-
-export type TicketStatus = 'OPEN' | 'RESOLVED' | 'CLOSED';
-export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-export type TicketCategory = 'GENERAL_QUESTION' | 'TECHNICAL_QUESTION' | 'REFUND_REQUEST';
-
-export interface TicketItem {
-  id: string;
-  ticketNumber: number;
-  subject: string;
-  status: TicketStatus;
-  category: TicketCategory;
-  priority: Priority;
-  customerEmail: string;
-  customerName?: string | null;
-  assignedTo?: {
-    id: string;
-    name: string;
-    email: string;
-  } | null;
-  _count?: {
-    messages: number;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type TicketSortField =
-  | 'createdAt'
-  | 'updatedAt'
-  | 'ticketNumber'
-  | 'priority'
-  | 'status'
-  | 'subject';
-export type TicketSortOrder = 'asc' | 'desc';
+import type {
+  TicketStatus,
+  Priority,
+  TicketCategory,
+  TicketItem,
+  TicketSortField,
+  TicketSortOrder,
+} from './types';
 
 export interface TicketTableProps {
   tickets: TicketItem[];

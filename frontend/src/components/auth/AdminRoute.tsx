@@ -1,12 +1,12 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Bot, Loader2 } from 'lucide-react';
-import { useSession, AuthUser } from '../lib/auth-client';
+import { useSession, AuthUser } from '@/lib/auth-client';
 
-export function PublicRoute() {
+export function AdminRoute() {
   const { data: session, isPending } = useSession();
   const location = useLocation();
 
-  if (isPending) {
+  if (isPending || (session?.user && !(session.user as AuthUser).role)) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground">
         <div className="flex flex-col items-center space-y-4">
@@ -15,20 +15,26 @@ export function PublicRoute() {
           </div>
           <div className="flex items-center space-x-2 text-muted-foreground text-sm font-medium">
             <Loader2 className="w-4 h-4 animate-spin text-primary" />
-            <span>Loading...</span>
+            <span>Verifying admin permissions...</span>
           </div>
         </div>
       </div>
     );
   }
 
-  const user = session?.user as AuthUser | undefined;
-  if (user && user.isActive !== false && !user.deletedAt) {
-    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
-    return <Navigate to={from} replace />;
+  if (!session?.user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  const user = session.user as AuthUser;
+  if (user.isActive === false) {
+    return <Navigate to="/login" state={{ error: 'Account has been deactivated' }} replace />;
+  }
+  if (user.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;
 }
 
-export default PublicRoute;
+export default AdminRoute;

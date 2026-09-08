@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EditUserModal } from '../EditUserModal';
-import { UserItem } from '../UserTable';
+import type { UserItem } from '../types';
 import { api } from '@/lib/api';
 
 describe('EditUserModal Component Tests', () => {

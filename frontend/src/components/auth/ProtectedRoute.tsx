@@ -1,12 +1,12 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Bot, Loader2 } from 'lucide-react';
-import { useSession, AuthUser } from '../lib/auth-client';
+import { useSession, AuthUser } from '@/lib/auth-client';
 
-export function AdminRoute() {
+export function ProtectedRoute() {
   const { data: session, isPending } = useSession();
   const location = useLocation();
 
-  if (isPending || (session?.user && !(session.user as AuthUser).role)) {
+  if (isPending) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground">
         <div className="flex flex-col items-center space-y-4">
@@ -15,7 +15,7 @@ export function AdminRoute() {
           </div>
           <div className="flex items-center space-x-2 text-muted-foreground text-sm font-medium">
             <Loader2 className="w-4 h-4 animate-spin text-primary" />
-            <span>Verifying admin permissions...</span>
+            <span>Verifying session...</span>
           </div>
         </div>
       </div>
@@ -27,14 +27,11 @@ export function AdminRoute() {
   }
 
   const user = session.user as AuthUser;
-  if (user.isActive === false) {
+  if (user.isActive === false || user.deletedAt) {
     return <Navigate to="/login" state={{ error: 'Account has been deactivated' }} replace />;
-  }
-  if (user.role !== 'ADMIN') {
-    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;
 }
 
-export default AdminRoute;
+export default ProtectedRoute;
