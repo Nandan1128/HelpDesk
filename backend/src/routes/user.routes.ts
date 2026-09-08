@@ -386,8 +386,14 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
     return res.status(400).json({ error: 'Administrator accounts cannot be deleted' });
   }
 
-  // Soft delete: flag as inactive, record deletedAt, and terminate active sessions
+  // Soft delete: flag as inactive, record deletedAt, unassign all assigned tickets, and terminate active sessions
   const deletedUser = await prisma.$transaction(async (tx) => {
+    // Unassign all tickets assigned to this user
+    await tx.ticket.updateMany({
+      where: { assignedToId: id },
+      data: { assignedToId: null },
+    });
+
     const user = await tx.user.update({
       where: { id },
       data: {

@@ -9,6 +9,16 @@ export const auth = betterAuth({
     provider: 'postgresql',
   }),
   databaseHooks: {
+    user: {
+      delete: {
+        before: async (user) => {
+          await prisma.ticket.updateMany({
+            where: { assignedToId: user.id },
+            data: { assignedToId: null },
+          });
+        },
+      },
+    },
     session: {
       create: {
         before: async (session) => {

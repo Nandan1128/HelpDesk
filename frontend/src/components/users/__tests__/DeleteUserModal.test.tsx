@@ -101,6 +101,33 @@ describe('DeleteUserModal Component Tests', () => {
       expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /delete user/i })).toBeEnabled();
     });
+
+    it('displays notice about assigned tickets being unassigned when user has tickets assigned', () => {
+      render(
+        <DeleteUserModal
+          isOpen={true}
+          user={agentUser}
+          onClose={mockOnClose}
+          onUserDeleted={mockOnUserDeleted}
+        />
+      );
+
+      expect(screen.getByText(/All assigned tickets will be unassigned automatically/i)).toBeInTheDocument();
+      expect(screen.getByText('5')).toBeInTheDocument();
+    });
+
+    it('does not display assigned tickets notice when user has 0 assigned tickets', () => {
+      render(
+        <DeleteUserModal
+          isOpen={true}
+          user={{ ...agentUser, _count: { assignedTickets: 0 } }}
+          onClose={mockOnClose}
+          onUserDeleted={mockOnUserDeleted}
+        />
+      );
+
+      expect(screen.queryByText(/All assigned tickets will be unassigned automatically/i)).not.toBeInTheDocument();
+    });
   });
 
   describe('2. Admin Protection Rule', () => {

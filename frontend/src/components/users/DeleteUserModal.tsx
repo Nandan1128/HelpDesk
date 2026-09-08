@@ -164,9 +164,18 @@ export function DeleteUserModal({
               </span>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Are you sure you want to delete <strong className="text-foreground">{user.name}</strong>? This action cannot be undone.
-            </p>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Are you sure you want to delete <strong className="text-foreground">{user.name}</strong>? This action cannot be undone.
+              </p>
+              {(user._count?.assignedTickets ?? 0) > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md p-2.5">
+                  <strong>Notice:</strong> This user currently has{' '}
+                  <span className="font-semibold">{user._count?.assignedTickets}</span> assigned ticket
+                  {user._count?.assignedTickets === 1 ? '' : 's'}. All assigned tickets will be unassigned automatically.
+                </p>
+              )}
+            </div>
           )}
 
           {/* Action Buttons */}

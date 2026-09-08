@@ -305,7 +305,7 @@ test.describe('User Management - List Users API (GET /api/users)', () => {
     });
   });
 
-  describe('PATCH /api/users/:id - Edit User Details & Password', () => {
+  test.describe('PATCH /api/users/:id - Edit User Details & Password', () => {
     test('should return 401 Unauthorized when not logged in', async ({ request }) => {
       const response = await request.patch('/api/users/some-id', {
         data: { name: 'Unauthorized Update' },
@@ -422,7 +422,7 @@ test.describe('User Management - List Users API (GET /api/users)', () => {
     });
   });
 
-  describe('DELETE /api/users/:id - Soft Delete User & Admin Protection', () => {
+  test.describe('DELETE /api/users/:id - Soft Delete User & Admin Protection', () => {
     test('should return 401 Unauthorized when not logged in', async ({ request }) => {
       const response = await request.delete('/api/users/any-id');
       expect(response.status()).toBe(401);
@@ -500,6 +500,76 @@ test.describe('User Management - List Users API (GET /api/users)', () => {
         });
         expect(meRes.status()).toBe(403);
       }
+    });
+
+    test('should unassign all tickets assigned to user when user is deleted', async ({ request }) => {
+      await signInAdmin(request);
+      const prisma = getTestPrismaClient();
+
+      // Create a temporary agent user
+      const tempAgent = {
+        name: 'Agent With Assigned Tickets',
+        email: `agent.with.tickets.${Date.now()}@ticketai.local`,
+        password: 'Password123!',
+      };
+
+      const createRes = await request.post('/api/users', {
+        data: tempAgent,
+      });
+      expect(createRes.status()).toBe(201);
+      const createdUser = (await createRes.json()).user;
+
+      // Create two tickets assigned to this agent
+      const ticket1 = await prisma.ticket.create({
+        data: {
+          subject: 'Ticket assigned to deleted agent 1',
+          customerEmail: 'customer1@example.com',
+          assignedToId: createdUser.id,
+        },
+      });
+
+      const ticket2 = await prisma.ticket.create({
+        data: {
+          subject: 'Ticket assigned to deleted agent 2',
+          customerEmail: 'customer2@example.com',
+          assignedToId: createdUser.id,
+        },
+      });
+
+      // Verify tickets are currently assigned to the agent
+      const beforeTickets = await prisma.ticket.findMany({
+        where: { id: { in: [ticket1.id, ticket2.id] } },
+      });
+      expect(beforeTickets).toHaveLength(2);
+      expect(beforeTickets.every((t) => t.assignedToId === createdUser.id)).toBe(true);
+
+      // Soft delete the user
+      const deleteRes = await request.delete(`/api/users/${createdUser.id}`);
+      expect(deleteRes.status()).toBe(200);
+      const deleteBody = await deleteRes.json();
+      expect(deleteBody.user.isActive).toBe(false);
+      expect(deleteBody.user.deletedAt).toBeDefined();
+
+      // Verify all tickets previously assigned to the user are now unassigned (assignedToId: null)
+      const afterTickets = await prisma.ticket.findMany({
+        where: { id: { in: [ticket1.id, ticket2.id] } },
+      });
+      expect(afterTickets).toHaveLength(2);
+      expect(afterTickets[0].assignedToId).toBeNull();
+      expect(afterTickets[1].assignedToId).toBeNull();
+
+      // Verify via GET /api/tickets?assignedTo=UNASSIGNED
+      const unassignedRes = await request.get('/api/tickets?assignedTo=UNASSIGNED');
+      expect(unassignedRes.status()).toBe(200);
+      const unassignedBody = await unassignedRes.json();
+      const unassignedIds = unassignedBody.tickets.map((t: any) => t.id);
+      expect(unassignedIds).toContain(ticket1.id);
+      expect(unassignedIds).toContain(ticket2.id);
+
+      // Clean up test tickets
+      await prisma.ticket.deleteMany({
+        where: { id: { in: [ticket1.id, ticket2.id] } },
+      });
     });
   });
 });
