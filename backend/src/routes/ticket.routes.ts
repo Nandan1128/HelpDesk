@@ -3,6 +3,7 @@ import { Prisma, TicketStatus, TicketCategory, Priority, SenderType } from '@pri
 import { z } from 'zod';
 import { prisma } from '../db/prisma.js';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { AIService } from '../services/ai.service.js';
 
 const router = Router();
 
@@ -317,6 +318,175 @@ router.patch('/:id', requireAuth, async (req: AuthenticatedRequest, res: Respons
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to update ticket';
     console.error('[Update Ticket Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * POST /api/tickets/polish
+ * Standalone endpoint to polish an agent draft response using Gemini via Vercel AI SDK.
+ * Optionally accepts ticketId in payload to include ticket background context.
+ */
+router.post('/polish', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const polishSchema = z
+      .object({
+        draft: z.string().optional(),
+        text: z.string().optional(),
+        reply: z.string().optional(),
+        ticketId: z.string().optional(),
+      })
+      .refine(
+        (data) =>
+          (data.draft && data.draft.trim().length > 0) ||
+          (data.text && data.text.trim().length > 0) ||
+          (data.reply && data.reply.trim().length > 0),
+        {
+          message: 'Draft reply text cannot be empty',
+        }
+      );
+
+    const parseResult = polishSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: parseResult.error.errors[0]?.message || 'Draft reply text cannot be empty',
+      });
+    }
+
+    const draft = (
+      parseResult.data.draft ||
+      parseResult.data.text ||
+      parseResult.data.reply
+    )!.trim();
+    const { ticketId } = parseResult.data;
+
+    let ticketContext;
+    if (ticketId) {
+      const isNumeric = /^\d+$/.test(ticketId);
+      const where: Prisma.TicketWhereUniqueInput = isNumeric
+        ? { ticketNumber: parseInt(ticketId, 10) }
+        : { id: ticketId };
+
+      const ticket = await prisma.ticket.findUnique({
+        where,
+        include: {
+          messages: {
+            orderBy: { createdAt: 'asc' },
+            take: 10,
+          },
+        },
+      });
+
+      if (ticket) {
+        ticketContext = {
+          ticketNumber: ticket.ticketNumber,
+          subject: ticket.subject,
+          customerName: ticket.customerName,
+          customerEmail: ticket.customerEmail,
+          category: ticket.category,
+          priority: ticket.priority,
+          messages: ticket.messages,
+        };
+      }
+    }
+
+    const polishedReply = await AIService.polishReply({
+      draft,
+      ticketContext,
+    });
+
+    return res.json({
+      polishedReply,
+      text: polishedReply,
+      originalDraft: draft,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to polish reply';
+    console.error('[Polish Reply Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * POST /api/tickets/:id/polish
+ * Polishes an agent's draft reply for a specific ticket using Gemini via Vercel AI SDK.
+ * Supports lookup by numeric ticketNumber (e.g. 42) or UUID.
+ */
+router.post('/:id/polish', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const polishSchema = z
+      .object({
+        draft: z.string().optional(),
+        text: z.string().optional(),
+        reply: z.string().optional(),
+      })
+      .refine(
+        (data) =>
+          (data.draft && data.draft.trim().length > 0) ||
+          (data.text && data.text.trim().length > 0) ||
+          (data.reply && data.reply.trim().length > 0),
+        {
+          message: 'Draft reply text cannot be empty',
+        }
+      );
+
+    const parseResult = polishSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: parseResult.error.errors[0]?.message || 'Draft reply text cannot be empty',
+      });
+    }
+
+    const draft = (
+      parseResult.data.draft ||
+      parseResult.data.text ||
+      parseResult.data.reply
+    )!.trim();
+
+    const isNumeric = /^\d+$/.test(id);
+    const where: Prisma.TicketWhereUniqueInput = isNumeric
+      ? { ticketNumber: parseInt(id, 10) }
+      : { id };
+
+    const ticket = await prisma.ticket.findUnique({
+      where,
+      include: {
+        messages: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+          take: 10,
+        },
+      },
+    });
+
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    const polishedReply = await AIService.polishReply({
+      draft,
+      ticketContext: {
+        ticketNumber: ticket.ticketNumber,
+        subject: ticket.subject,
+        customerName: ticket.customerName,
+        customerEmail: ticket.customerEmail,
+        category: ticket.category,
+        priority: ticket.priority,
+        messages: ticket.messages,
+      },
+    });
+
+    return res.json({
+      polishedReply,
+      text: polishedReply,
+      originalDraft: draft,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to polish reply';
+    console.error('[Polish Reply Error]:', error);
     return res.status(500).json({ error: message });
   }
 });

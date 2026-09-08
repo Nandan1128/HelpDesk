@@ -28,6 +28,7 @@ export class TicketDetailPage {
 
   // Reply Composer
   readonly replyTextarea: Locator;
+  readonly polishButton: Locator;
   readonly sendReplyButton: Locator;
   readonly sendAndResolveButton: Locator;
   readonly replySuccessAlert: Locator;
@@ -79,6 +80,7 @@ export class TicketDetailPage {
 
     // Reply Composer
     this.replyTextarea = page.getByPlaceholder(/write your response to the customer/i);
+    this.polishButton = page.getByRole('button', { name: /polish/i });
     this.sendReplyButton = page.getByRole('button', { name: /^send reply$/i });
     this.sendAndResolveButton = page.getByRole('button', { name: /send & resolve/i });
     this.replySuccessAlert = page.locator('[data-slot="alert"]').filter({ hasText: /reply sent/i });
@@ -110,6 +112,11 @@ export class TicketDetailPage {
   async sendReply(message: string) {
     await this.replyTextarea.fill(message);
     await this.sendReplyButton.click();
+  }
+
+  async polishReply(draft: string) {
+    await this.replyTextarea.fill(draft);
+    await this.polishButton.click();
   }
 
   async sendAndResolve(message: string) {

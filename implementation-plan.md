@@ -40,13 +40,14 @@
 
 ## Phase 5: AI Features
 
-- [ ] Set up Google Gemini API integration (`@google/genai`)
+- [x] Set up Google Gemini API integration with Vercel AI SDK (`ai` & `@ai-sdk/google`)
 - [ ] Implement auto-classification endpoint (categorize incoming tickets)
 - [ ] Implement AI summary endpoint (generate ticket summary)
+- [x] Implement AI Polish button to improve agent replies using Gemini API key
 - [ ] Implement AI suggested reply endpoint with RAG
 - [ ] Build knowledge base structure and seed with initial content
 
-- [ ] Integrate AI features into ticket detail page UI
+- [x] Integrate AI reply polishing into ticket detail page UI
 
 ## Phase 6: Email Integration
 

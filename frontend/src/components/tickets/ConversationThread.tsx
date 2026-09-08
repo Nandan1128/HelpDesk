@@ -61,7 +61,11 @@ export function ConversationThread({
         }
       }
     } catch (err: any) {
-      setReplyError(err?.message || 'Failed to polish reply.');
+      const msg =
+        err?.response?.data?.error ||
+        err?.message ||
+        'Failed to polish reply.';
+      setReplyError(msg);
     } finally {
       setPolishing(false);
       replyTextareaRef.current?.focus();

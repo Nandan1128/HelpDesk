@@ -129,6 +129,70 @@ describe('TicketDetailPage Component Tests', () => {
       expect(screen.queryByText('AI Suggested Reply')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: /polish/i })).toBeInTheDocument();
     });
+
+    it('polishes agent reply when clicking Polish button', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(api, 'post').mockResolvedValueOnce({
+        data: {
+          polishedReply: 'Hi Jane, we have reviewed your payment transaction and issued a full refund.',
+        },
+      } as any);
+
+      renderTicketDetailPage();
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/write your response/i)).toBeInTheDocument();
+      });
+
+      const textarea = screen.getByPlaceholderText(/write your response/i);
+      await user.type(textarea, 'we looked into the charge and refunded it');
+
+      const polishBtn = screen.getByRole('button', { name: /polish/i });
+      expect(polishBtn).toBeEnabled();
+
+      await user.click(polishBtn);
+
+      await waitFor(() => {
+        expect(api.post).toHaveBeenCalledWith('/tickets/42/polish', {
+          draft: 'we looked into the charge and refunded it',
+        });
+      });
+
+      await waitFor(() => {
+        expect(textarea).toHaveValue(
+          'Hi Jane, we have reviewed your payment transaction and issued a full refund.'
+        );
+      });
+    });
+
+    it('displays error alert when polish API fails', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(api, 'post').mockRejectedValueOnce({
+        response: {
+          data: {
+            error: 'Failed to connect to Gemini API. Check your API key.',
+          },
+        },
+      });
+
+      renderTicketDetailPage();
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/write your response/i)).toBeInTheDocument();
+      });
+
+      const textarea = screen.getByPlaceholderText(/write your response/i);
+      await user.type(textarea, 'draft message');
+
+      const polishBtn = screen.getByRole('button', { name: /polish/i });
+      await user.click(polishBtn);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Failed to connect to Gemini API. Check your API key.')
+        ).toBeInTheDocument();
+      });
+    });
   });
 
   describe('3. Conversation Thread', () => {

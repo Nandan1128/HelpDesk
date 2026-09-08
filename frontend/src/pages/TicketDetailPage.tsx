@@ -138,6 +138,22 @@ export function TicketDetailPage() {
     }
   };
 
+  const handlePolishReply = async (draftText: string): Promise<string> => {
+    const targetId = id || ticket?.id;
+    if (!targetId) {
+      throw new Error('Ticket ID is missing.');
+    }
+
+    const response = await api.post<{
+      polishedReply: string;
+      text?: string;
+    }>(`/tickets/${targetId}/polish`, {
+      draft: draftText,
+    });
+
+    return response.data.polishedReply || response.data.text || draftText;
+  };
+
   // Skeleton Loader State
   if (loading) {
     return (
@@ -262,6 +278,7 @@ export function TicketDetailPage() {
             ticketId={id || ticket.id}
             onTicketUpdated={setTicket}
             currentUserName={sessionData?.user?.name || 'Support Agent'}
+            onPolish={handlePolishReply}
           />
         </div>
 

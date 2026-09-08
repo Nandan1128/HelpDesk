@@ -87,26 +87,16 @@ test.describe('Ticket Detail Page - End-to-End Tests (/tickets/:id)', () => {
     await expect(page).toHaveURL('/tickets');
   });
 
-  test('2. AI Highlights: should display summary and insert AI suggested reply into composer', async () => {
+  test('2. AI Highlights: should display summary and render polish button in composer', async () => {
     // Verify AI Summary card
     await expect(ticketDetailPage.aiSummaryCard).toBeVisible();
     await expect(ticketDetailPage.aiSummaryCard).toContainText(
       'Customer experiences connection timeout when attempting to reach PostgreSQL port 5432.'
     );
 
-    // Verify AI Suggested Reply card
-    await expect(ticketDetailPage.aiSuggestedReplyCard).toBeVisible();
-    await expect(ticketDetailPage.aiSuggestedReplyCard).toContainText(
-      'Hi Devon, please verify that your security group permits inbound traffic on port 5432.'
-    );
-
-    // Click "Use This Draft" button
-    await ticketDetailPage.useDraftButton.click();
-
-    // Verify textarea populated with suggested reply
-    await expect(ticketDetailPage.replyTextarea).toHaveValue(
-      'Hi Devon, please verify that your security group permits inbound traffic on port 5432.'
-    );
+    // Verify AI Suggested Reply card is not displayed in favor of the Polish button
+    await expect(ticketDetailPage.aiSuggestedReplyCard).not.toBeVisible();
+    await expect(ticketDetailPage.polishButton).toBeVisible();
   });
 
   test('3. Conversation Thread: should render chronological messages with correct roles', async () => {
@@ -155,6 +145,33 @@ test.describe('Ticket Detail Page - End-to-End Tests (/tickets/:id)', () => {
       where: { ticketId: testTicketId },
     });
     expect(dbMessages).toHaveLength(3);
+  });
+
+  test('4b. Polish Draft: should polish draft reply using polish button', async ({ page }) => {
+    await page.route('**/api/tickets/*/polish', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          polishedReply: 'Hello Devon, I have examined the security groups and opened port 5432 for PostgreSQL.',
+        }),
+      });
+    });
+
+    // Polish button disabled when textarea is empty
+    await expect(ticketDetailPage.polishButton).toBeDisabled();
+
+    // Type raw draft
+    await ticketDetailPage.replyTextarea.fill('opened port 5432 try connecting now');
+    await expect(ticketDetailPage.polishButton).toBeEnabled();
+
+    // Click Polish
+    await ticketDetailPage.polishButton.click();
+
+    // Textarea updated with polished response
+    await expect(ticketDetailPage.replyTextarea).toHaveValue(
+      'Hello Devon, I have examined the security groups and opened port 5432 for PostgreSQL.'
+    );
   });
 
   test('5. Send & Resolve: should append message and resolve ticket in single action', async () => {

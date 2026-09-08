@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "dev:test": "bun --env-file=.env.test --watch src/index.ts",
+    "test": "bun test",
     "build": "bun build src/index.ts --outdir dist --target node",
     "start": "bun dist/index.js",
     "start:test": "bun --env-file=.env.test dist/index.js",
@@ -22,8 +23,10 @@
     "seed": "bun prisma/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.64",
     "@google/genai": "^2.19.0",
     "@prisma/client": "^5.22.0",
+    "ai": "^7.0.93",
     "better-auth": "^1.7.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
