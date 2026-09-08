@@ -30,6 +30,7 @@ export interface ConversationThreadProps {
   onTicketUpdated?: (updatedTicket: TicketDetail) => void;
   currentUserName?: string;
   onPolish?: (replyText: string) => Promise<string> | void;
+  onSummarize?: () => Promise<string | void> | void;
 }
 
 export function ConversationThread({
@@ -38,11 +39,14 @@ export function ConversationThread({
   onTicketUpdated,
   currentUserName = 'Support Agent',
   onPolish,
+  onSummarize,
 }: ConversationThreadProps) {
   const [replyBody, setReplyBody] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [polishing, setPolishing] = useState(false);
+  const [summarizing, setSummarizing] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [replySuccess, setReplySuccess] = useState<string | null>(null);
 
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -69,6 +73,23 @@ export function ConversationThread({
     } finally {
       setPolishing(false);
       replyTextareaRef.current?.focus();
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (!onSummarize) return;
+    setSummarizing(true);
+    setSummaryError(null);
+    try {
+      await onSummarize();
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.error ||
+        err?.message ||
+        'Failed to generate ticket summary.';
+      setSummaryError(msg);
+    } finally {
+      setSummarizing(false);
     }
   };
 
@@ -118,19 +139,51 @@ export function ConversationThread({
 
   return (
     <div className="space-y-6" data-testid="conversation-thread-container">
-      {/* AI Conversation Summary Card (if present) */}
-      {ticket.aiSummary && (
-        <Card className="border-primary/30 bg-primary/5 shadow-xs overflow-hidden">
+      {/* AI Conversation Summary Card (if present or summarizing) */}
+      {(ticket.aiSummary || summarizing) && (
+        <Card className="border-primary/30 bg-primary/5 shadow-xs overflow-hidden" data-testid="ai-summary-card">
           <CardHeader className="p-4 sm:p-5 pb-3">
-            <div className="flex items-center space-x-2 text-primary font-semibold text-sm">
-              <Sparkles className="w-4 h-4" />
-              <span>AI Conversation Summary</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-primary font-semibold text-sm">
+                <Sparkles className={`w-4 h-4 ${summarizing ? 'animate-spin' : ''}`} />
+                <span>AI Conversation Summary</span>
+              </div>
+              {onSummarize && ticket.aiSummary && !summarizing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSummarize}
+                  className="text-xs h-7 text-primary hover:text-primary/80 cursor-pointer"
+                  title="Re-generate summary"
+                  data-testid="regenerate-summary-button"
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-1" />
+                  <span>Regenerate</span>
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0 text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-            {ticket.aiSummary}
+            {summarizing ? (
+              <div className="flex items-center space-x-2 text-muted-foreground text-xs py-1">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                <span>Generating ticket and conversation summary...</span>
+              </div>
+            ) : (
+              ticket.aiSummary
+            )}
           </CardContent>
         </Card>
+      )}
+
+      {summaryError && (
+        <Alert className="border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 py-2">
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription className="text-xs font-medium">
+            {summaryError}
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Conversation History / Thread */}
@@ -164,25 +217,23 @@ export function ConversationThread({
                 return (
                   <div
                     key={msg.id || index}
-                    className={`p-4 rounded-xl border transition-colors ${
-                      isCustomer
+                    className={`p-4 rounded-xl border transition-colors ${isCustomer
                         ? 'bg-muted/30 border-border'
                         : isAgent
-                        ? 'bg-primary/5 border-primary/20'
-                        : 'bg-muted/20 border-border/80'
-                    }`}
+                          ? 'bg-primary/5 border-primary/20'
+                          : 'bg-muted/20 border-border/80'
+                      }`}
                     data-testid={`ticket-message-${msg.id}`}
                   >
                     <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-border/40">
                       <div className="flex items-center space-x-2.5">
                         <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                            isCustomer
+                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${isCustomer
                               ? 'bg-sky-500/20 text-sky-700 dark:text-sky-300'
                               : isAgent
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
                         >
                           {isCustomer ? (
                             <User className="w-3.5 h-3.5" />
@@ -199,19 +250,18 @@ export function ConversationThread({
                             </span>
                             <Badge
                               variant="outline"
-                              className={`text-[10px] px-1.5 py-0 ${
-                                isCustomer
+                              className={`text-[10px] px-1.5 py-0 ${isCustomer
                                   ? 'text-sky-600 border-sky-500/30'
                                   : isAgent
-                                  ? 'text-primary border-primary/30'
-                                  : 'text-muted-foreground'
-                              }`}
+                                    ? 'text-primary border-primary/30'
+                                    : 'text-muted-foreground'
+                                }`}
                             >
                               {isCustomer
                                 ? 'Customer'
                                 : isAgent
-                                ? 'Support Agent'
-                                : 'System'}
+                                  ? 'Support Agent'
+                                  : 'System'}
                             </Badge>
                           </div>
                           <span className="text-[11px] text-muted-foreground">
@@ -231,6 +281,32 @@ export function ConversationThread({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Summarize button below the message */}
+          {onSummarize && (
+            <div className="flex items-center justify-between pt-3 border-t border-border/40">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSummarize}
+                disabled={summarizing}
+                className="text-xs h-8 shadow-xs cursor-pointer"
+                title="Summarize ticket and conversation history with AI"
+                data-testid="summarize-ticket-button"
+              >
+                {summarizing ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                )}
+                <span>{summarizing ? 'Summarizing...' : 'Summarize'}</span>
+              </Button>
+              <span className="text-[11px] text-muted-foreground">
+                Summarize ticket & conversation history with AI
+              </span>
             </div>
           )}
         </CardContent>

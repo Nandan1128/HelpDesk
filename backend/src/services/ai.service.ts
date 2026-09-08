@@ -25,6 +25,25 @@ export interface PolishReplyOptions {
   modelName?: string;
 }
 
+export interface SummarizeTicketOptions {
+  ticketNumber?: number;
+  subject: string;
+  customerName?: string | null;
+  customerEmail?: string;
+  category?: string;
+  priority?: string;
+  status?: string;
+  messages?: Array<{
+    senderType: string;
+    senderName?: string | null;
+    senderEmail?: string;
+    body: string;
+    createdAt?: Date | string;
+  }>;
+  apiKey?: string;
+  modelName?: string;
+}
+
 export class AIService {
   /**
    * Initializes a Google provider instance with the configured or provided Gemini API key.
@@ -112,5 +131,70 @@ CRITICAL INSTRUCTIONS:
     }
 
     return polished;
+  }
+
+  /**
+   * Generates a concise summary of a ticket and its entire conversation history using Gemini via Vercel AI SDK.
+   */
+  static async summarizeTicket({
+    ticketNumber,
+    subject,
+    customerName,
+    customerEmail,
+    category,
+    priority,
+    status,
+    messages,
+    apiKey,
+    modelName,
+  }: SummarizeTicketOptions): Promise<string> {
+    const model = this.getGoogleModel(apiKey, modelName);
+
+    const ticketDetails: string[] = [];
+    if (ticketNumber) ticketDetails.push(`Ticket #: ${ticketNumber}`);
+    if (subject) ticketDetails.push(`Subject: ${subject}`);
+    if (customerName) ticketDetails.push(`Customer Name: ${customerName}`);
+    if (customerEmail) ticketDetails.push(`Customer Email: ${customerEmail}`);
+    if (category) ticketDetails.push(`Category: ${category}`);
+    if (priority) ticketDetails.push(`Priority: ${priority}`);
+    if (status) ticketDetails.push(`Status: ${status}`);
+
+    let conversationText = 'No messages recorded yet.';
+    if (messages && messages.length > 0) {
+      conversationText = messages
+        .map(
+          (m) =>
+            `[${m.senderType} - ${m.senderName || m.senderEmail || 'User'}]: ${m.body}`
+        )
+        .join('\n\n');
+    }
+
+    const systemPrompt = `You are an expert customer support analyst.
+Your task is to summarize a support ticket and its entire conversation history into a clear, concise, and structured summary.
+
+CRITICAL GUIDELINES:
+1. Summary Length & Focus: Provide a short, direct summary (typically 2 to 4 sentences or concise bullet points).
+2. Key Elements to Capture:
+   - The customer's primary issue, question, or request.
+   - Any key findings, actions taken, or troubleshooting steps performed by the agent or customer.
+   - The current resolution status or next pending action.
+3. Accuracy: Strictly stick to the facts present in the ticket and messages. Do not speculate or invent details.
+4. Output: Return ONLY the summary text directly. Never include any preamble (such as "Here is the summary:"), greetings, or markdown code fences.`;
+
+    const userPrompt = `--- Ticket Metadata ---\n${ticketDetails.join('\n')}\n\n--- Conversation History ---\n${conversationText}\n\nSummary:`;
+
+    const result = await generateText({
+      model,
+      system: systemPrompt,
+      prompt: userPrompt,
+    });
+
+    let summary = result.text.trim();
+
+    if (summary.startsWith('```') && summary.endsWith('```')) {
+      summary = summary.replace(/^```(?:markdown|text)?\n?/, '').replace(/\n?```$/, '').trim();
+    }
+
+    return summary;
   }
 }

@@ -323,6 +323,83 @@ router.patch('/:id', requireAuth, async (req: AuthenticatedRequest, res: Respons
 });
 
 /**
+ * POST /api/tickets/summarize
+ * Standalone endpoint to summarize a ticket and conversation history using Gemini via Vercel AI SDK.
+ */
+router.post('/summarize', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const summarizeSchema = z.object({
+      ticketId: z.string().min(1, 'ticketId is required'),
+    });
+
+    const parseResult = summarizeSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: parseResult.error.errors[0]?.message || 'ticketId is required',
+      });
+    }
+
+    const { ticketId } = parseResult.data;
+    const isNumeric = /^\d+$/.test(ticketId);
+    const where: Prisma.TicketWhereUniqueInput = isNumeric
+      ? { ticketNumber: parseInt(ticketId, 10) }
+      : { id: ticketId };
+
+    const ticket = await prisma.ticket.findUnique({
+      where,
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    const summary = await AIService.summarizeTicket({
+      ticketNumber: ticket.ticketNumber,
+      subject: ticket.subject,
+      customerName: ticket.customerName,
+      customerEmail: ticket.customerEmail,
+      category: ticket.category,
+      priority: ticket.priority,
+      status: ticket.status,
+      messages: ticket.messages,
+    });
+
+    const updatedTicket = await prisma.ticket.update({
+      where: { id: ticket.id },
+      data: {
+        aiSummary: summary,
+      },
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    return res.json({
+      summary,
+      ticket: updatedTicket,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to summarize ticket';
+    console.error('[Summarize Ticket Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
  * POST /api/tickets/polish
  * Standalone endpoint to polish an agent draft response using Gemini via Vercel AI SDK.
  * Optionally accepts ticketId in payload to include ticket background context.
@@ -487,6 +564,79 @@ router.post('/:id/polish', requireAuth, async (req: AuthenticatedRequest, res: R
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to polish reply';
     console.error('[Polish Reply Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * POST /api/tickets/:id/summarize
+ * Generates or re-generates an AI summary for a ticket and its entire conversation history using Gemini via Vercel AI SDK.
+ * Updates and persists `aiSummary` on the Ticket record.
+ * Supports numeric ticketNumber (e.g. 42) or UUID.
+ */
+router.post('/:id/summarize', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const isNumeric = /^\d+$/.test(id);
+    const where: Prisma.TicketWhereUniqueInput = isNumeric
+      ? { ticketNumber: parseInt(id, 10) }
+      : { id };
+
+    const ticket = await prisma.ticket.findUnique({
+      where,
+      include: {
+        messages: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    const summary = await AIService.summarizeTicket({
+      ticketNumber: ticket.ticketNumber,
+      subject: ticket.subject,
+      customerName: ticket.customerName,
+      customerEmail: ticket.customerEmail,
+      category: ticket.category,
+      priority: ticket.priority,
+      status: ticket.status,
+      messages: ticket.messages,
+    });
+
+    const updatedTicket = await prisma.ticket.update({
+      where: { id: ticket.id },
+      data: {
+        aiSummary: summary,
+      },
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        messages: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    return res.json({
+      summary,
+      ticket: updatedTicket,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to summarize ticket';
+    console.error('[Summarize Ticket Error]:', error);
     return res.status(500).json({ error: message });
   }
 });

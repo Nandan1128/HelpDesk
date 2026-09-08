@@ -193,6 +193,70 @@ describe('TicketDetailPage Component Tests', () => {
         ).toBeInTheDocument();
       });
     });
+
+    it('renders Summarize button below the message and re-generates summary on click', async () => {
+      const user = userEvent.setup();
+      const updatedTicketWithSummary = {
+        ...mockTicket,
+        aiSummary: 'Re-generated fresh summary of ticket and full message history.',
+      };
+
+      vi.spyOn(api, 'post').mockResolvedValueOnce({
+        data: {
+          summary: 'Re-generated fresh summary of ticket and full message history.',
+          ticket: updatedTicketWithSummary,
+        },
+      } as any);
+
+      renderTicketDetailPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Broken payment gateway during checkout')).toBeInTheDocument();
+      });
+
+      // Find the Summarize button below the message
+      const summarizeBtn = screen.getByTestId('summarize-ticket-button');
+      expect(summarizeBtn).toBeInTheDocument();
+      expect(summarizeBtn).toHaveTextContent(/summarize/i);
+
+      await user.click(summarizeBtn);
+
+      await waitFor(() => {
+        expect(api.post).toHaveBeenCalledWith('/tickets/42/summarize');
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Re-generated fresh summary of ticket and full message history.')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('handles summarization error gracefully', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(api, 'post').mockRejectedValueOnce({
+        response: {
+          data: {
+            error: 'Failed to summarize ticket with Gemini API.',
+          },
+        },
+      });
+
+      renderTicketDetailPage();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('summarize-ticket-button')).toBeInTheDocument();
+      });
+
+      const summarizeBtn = screen.getByTestId('summarize-ticket-button');
+      await user.click(summarizeBtn);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Failed to summarize ticket with Gemini API.')
+        ).toBeInTheDocument();
+      });
+    });
   });
 
   describe('3. Conversation Thread', () => {

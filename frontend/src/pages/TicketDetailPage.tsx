@@ -154,6 +154,26 @@ export function TicketDetailPage() {
     return response.data.polishedReply || response.data.text || draftText;
   };
 
+  const handleSummarizeTicket = async (): Promise<string> => {
+    const targetId = id || ticket?.id;
+    if (!targetId) {
+      throw new Error('Ticket ID is missing.');
+    }
+
+    const response = await api.post<{
+      summary: string;
+      ticket?: TicketDetail;
+    }>(`/tickets/${targetId}/summarize`);
+
+    if (response.data.ticket) {
+      setTicket(response.data.ticket);
+    } else if (response.data.summary && ticket) {
+      setTicket({ ...ticket, aiSummary: response.data.summary });
+    }
+
+    return response.data.summary;
+  };
+
   // Skeleton Loader State
   if (loading) {
     return (
@@ -279,6 +299,7 @@ export function TicketDetailPage() {
             onTicketUpdated={setTicket}
             currentUserName={sessionData?.user?.name || 'Support Agent'}
             onPolish={handlePolishReply}
+            onSummarize={handleSummarizeTicket}
           />
         </div>
 

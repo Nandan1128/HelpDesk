@@ -112,6 +112,19 @@ describe('ConversationThread Component Tests', () => {
         expect(textarea).toHaveValue('Polished response text');
       });
     });
+
+    it('renders Summarize button with sparkles icon below the message and calls onSummarize when clicked', async () => {
+      const user = userEvent.setup();
+      const onSummarize = vi.fn().mockResolvedValue('Fresh AI summary');
+      render(<ConversationThread ticket={mockTicket} onSummarize={onSummarize} />);
+
+      const summarizeBtn = screen.getByTestId('summarize-ticket-button');
+      expect(summarizeBtn).toBeInTheDocument();
+      expect(summarizeBtn).toHaveTextContent(/summarize/i);
+
+      await user.click(summarizeBtn);
+      expect(onSummarize).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('2. Message History Thread', () => {

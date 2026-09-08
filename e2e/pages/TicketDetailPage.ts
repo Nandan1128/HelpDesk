@@ -23,6 +23,8 @@ export class TicketDetailPage {
 
   // Conversation Thread
   readonly conversationThreadCard: Locator;
+  readonly summarizeButton: Locator;
+  readonly regenerateSummaryButton: Locator;
   readonly messageCountBadge: Locator;
   readonly messageItems: Locator;
 
@@ -75,6 +77,8 @@ export class TicketDetailPage {
 
     // Conversation Thread
     this.conversationThreadCard = page.locator('[data-slot="card"]').filter({ hasText: /Conversation Thread/i });
+    this.summarizeButton = page.getByTestId('summarize-ticket-button');
+    this.regenerateSummaryButton = page.getByTestId('regenerate-summary-button');
     this.messageCountBadge = this.conversationThreadCard.locator('[data-slot="badge"]').filter({ hasText: /message/i });
     this.messageItems = page.locator('[data-testid^="ticket-message-"]');
 
@@ -117,6 +121,10 @@ export class TicketDetailPage {
   async polishReply(draft: string) {
     await this.replyTextarea.fill(draft);
     await this.polishButton.click();
+  }
+
+  async summarizeTicket() {
+    await this.summarizeButton.click();
   }
 
   async sendAndResolve(message: string) {

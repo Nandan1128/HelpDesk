@@ -97,6 +97,28 @@ test.describe('Ticket Detail Page - End-to-End Tests (/tickets/:id)', () => {
     // Verify AI Suggested Reply card is not displayed in favor of the Polish button
     await expect(ticketDetailPage.aiSuggestedReplyCard).not.toBeVisible();
     await expect(ticketDetailPage.polishButton).toBeVisible();
+    await expect(ticketDetailPage.summarizeButton).toBeVisible();
+  });
+
+  test('2b. AI Summarize: should re-generate summary when clicking Summarize button below the message', async ({
+    page,
+  }) => {
+    await page.route('**/api/tickets/*/summarize', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          summary: 'Newly re-generated concise summary of ticket and full message history.',
+        }),
+      });
+    });
+
+    await expect(ticketDetailPage.summarizeButton).toBeVisible();
+    await ticketDetailPage.summarizeTicket();
+
+    await expect(ticketDetailPage.aiSummaryCard).toContainText(
+      'Newly re-generated concise summary of ticket and full message history.'
+    );
   });
 
   test('3. Conversation Thread: should render chronological messages with correct roles', async () => {

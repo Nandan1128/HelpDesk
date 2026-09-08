@@ -48,3 +48,47 @@ describe('AIService - Polish Reply Tests', () => {
     }
   });
 });
+
+describe('AIService - Summarize Ticket Tests', () => {
+  test('rejects when GEMINI_API_KEY is missing', async () => {
+    await expect(
+      AIService.summarizeTicket({
+        subject: 'Cannot login to account',
+        apiKey: '',
+      })
+    ).rejects.toThrow();
+  });
+
+  test('summarizes ticket and conversation history', async () => {
+    const apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      const result = await AIService.summarizeTicket({
+        ticketNumber: 42,
+        subject: 'Broken payment gateway during checkout',
+        customerName: 'Jane Doe',
+        customerEmail: 'jane@example.com',
+        category: 'REFUND_REQUEST',
+        priority: 'URGENT',
+        status: 'OPEN',
+        messages: [
+          {
+            senderType: 'CUSTOMER',
+            senderName: 'Jane Doe',
+            senderEmail: 'jane@example.com',
+            body: 'I tried to pay but got a server error! Did my card get charged?',
+          },
+          {
+            senderType: 'AGENT',
+            senderName: 'Sarah Connor',
+            senderEmail: 'sarah@ticketai.local',
+            body: 'We checked and your card was not charged. The error has been resolved.',
+          },
+        ],
+      });
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(15);
+      expect(result.toLowerCase()).toMatch(/card|charge|payment|error|gateway/);
+    }
+  });
+});
