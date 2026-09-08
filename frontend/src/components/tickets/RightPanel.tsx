@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Sparkles } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -23,6 +23,8 @@ export interface RightPanelProps {
   updatingPriority?: boolean;
   updatingCategory?: boolean;
   updatingAssignee?: boolean;
+  onClassify?: () => Promise<void>;
+  classifying?: boolean;
 }
 
 export function RightPanel({
@@ -34,6 +36,8 @@ export function RightPanel({
   updatingPriority = false,
   updatingCategory = false,
   updatingAssignee = false,
+  onClassify,
+  classifying = false,
 }: RightPanelProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -47,10 +51,25 @@ export function RightPanel({
     <div className="space-y-6" data-testid="right-panel-container">
       {/* Ticket Management & Control Panel */}
       <Card className="border-border bg-card shadow-xs">
-        <CardHeader className="p-4 sm:p-5 pb-3 border-b border-border/60">
+        <CardHeader className="p-4 sm:p-5 pb-3 border-b border-border/60 flex flex-row items-center justify-between">
           <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
             Ticket Details & Control
           </CardTitle>
+          {onClassify && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={classifying || updatingCategory || updatingPriority}
+              onClick={onClassify}
+              className="h-7 px-2 text-xs font-medium gap-1 text-primary hover:text-primary hover:bg-primary/10 border-primary/30 cursor-pointer"
+              title="Automatically classify ticket category and priority using Gemini"
+              data-testid="auto-classify-button"
+            >
+              <Sparkles className={`h-3 w-3 ${classifying ? 'animate-spin' : ''}`} />
+              <span>{classifying ? 'Classifying...' : 'Auto-Classify'}</span>
+            </Button>
+          )}
         </CardHeader>
 
         <CardContent className="p-4 sm:p-5 space-y-4">

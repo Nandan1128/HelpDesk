@@ -49,6 +49,7 @@ export function TicketDetailPage() {
   const [updatingPriority, setUpdatingPriority] = useState(false);
   const [updatingCategory, setUpdatingCategory] = useState(false);
   const [updatingAssignee, setUpdatingAssignee] = useState(false);
+  const [classifying, setClassifying] = useState(false);
   const [updateFeedback, setUpdateFeedback] = useState<string | null>(null);
 
   const fetchTicket = useCallback(
@@ -172,6 +173,41 @@ export function TicketDetailPage() {
     }
 
     return response.data.summary;
+  };
+
+  const handleClassifyTicket = async (): Promise<void> => {
+    const targetId = id || ticket?.id;
+    if (!targetId) return;
+
+    setClassifying(true);
+    setUpdateFeedback(null);
+
+    try {
+      const response = await api.post<{
+        success: boolean;
+        ticket: TicketDetail;
+        classification?: {
+          category: TicketCategory;
+          priority: Priority;
+          reasoning: string;
+        };
+      }>(`/tickets/${targetId}/classify`);
+
+      if (response.data?.ticket) {
+        setTicket(response.data.ticket);
+        const cat = response.data.ticket.category.replace('_', ' ');
+        const prio = response.data.ticket.priority;
+        setUpdateFeedback(`AI Classified as ${cat} (${prio})`);
+      }
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.error ||
+        err?.message ||
+        'Failed to classify ticket with Gemini AI.';
+      setUpdateFeedback(`Classification error: ${msg}`);
+    } finally {
+      setClassifying(false);
+    }
   };
 
   // Skeleton Loader State
@@ -313,6 +349,8 @@ export function TicketDetailPage() {
           updatingPriority={updatingPriority}
           updatingCategory={updatingCategory}
           updatingAssignee={updatingAssignee}
+          onClassify={handleClassifyTicket}
+          classifying={classifying}
         />
       </div>
     </div>

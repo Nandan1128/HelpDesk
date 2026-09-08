@@ -1,5 +1,7 @@
-import { generateText } from 'ai';
+import { generateText, generateObject } from 'ai';
 import { createGoogle } from '@ai-sdk/google';
+import { z } from 'zod';
+import { TicketCategory, Priority } from '@prisma/client';
 import { env } from '../config/env.js';
 
 export interface TicketContext {
@@ -44,6 +46,21 @@ export interface SummarizeTicketOptions {
   modelName?: string;
 }
 
+export interface ClassifyTicketOptions {
+  subject: string;
+  body?: string;
+  customerName?: string | null;
+  customerEmail?: string;
+  apiKey?: string;
+  modelName?: string;
+}
+
+export interface TicketClassificationResult {
+  category: TicketCategory;
+  priority: Priority;
+  reasoning: string;
+}
+
 export class AIService {
   /**
    * Initializes a Google provider instance with the configured or provided Gemini API key.
@@ -54,7 +71,7 @@ export class AIService {
       throw new Error('GEMINI_API_KEY is not configured on the server.');
     }
 
-    const modelName = customModelName || env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const modelName = customModelName || env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
     const google = createGoogle({ apiKey });
     return google(modelName);
   }
@@ -196,5 +213,76 @@ CRITICAL GUIDELINES:
     }
 
     return summary;
+  }
+
+  /**
+   * Automatically classifies a support ticket into exactly one category and priority level
+   * using Google Gemini via Vercel AI SDK (generateObject).
+   */
+  static async classifyTicket({
+    subject,
+    body,
+    customerName,
+    customerEmail,
+    apiKey,
+    modelName,
+  }: ClassifyTicketOptions): Promise<TicketClassificationResult> {
+    const trimmedSubject = subject?.trim() || '';
+    const trimmedBody = body?.trim() || '';
+
+    if (!trimmedSubject && !trimmedBody) {
+      throw new Error('Ticket subject or body must be provided for classification');
+    }
+
+    const model = this.getGoogleModel(apiKey, modelName);
+
+    const ticketDetails: string[] = [];
+    if (trimmedSubject) ticketDetails.push(`Subject: ${trimmedSubject}`);
+    if (trimmedBody) ticketDetails.push(`Initial Message / Description:\n${trimmedBody}`);
+    if (customerName) ticketDetails.push(`Customer Name: ${customerName}`);
+    if (customerEmail) ticketDetails.push(`Customer Email: ${customerEmail}`);
+
+    const systemPrompt = `You are an expert AI customer support ticket classifier.
+Your task is to analyze incoming customer support tickets (subject and body) and categorize and prioritize them accurately.
+
+CATEGORIES (choose exactly one):
+1. GENERAL_QUESTION: General inquiries, how-to questions, product information, account settings, feature questions, feedback, or routine non-technical inquiries.
+2. TECHNICAL_QUESTION: Software bugs, system errors, crashes, 500 errors, broken features, integration problems, database connection failures, performance issues, or API problems.
+3. REFUND_REQUEST: Explicit or implicit requests for refunds, money back, billing disputes, cancel subscriptions with refund, double charges, return products for refund, or invoice disputes.
+
+PRIORITIES (choose exactly one):
+1. URGENT: Critical outages, production downtime, severe security vulnerabilities, active unauthorized financial charges, or completely blocked business operations affecting multiple users.
+2. HIGH: Major feature breakdown, payment/checkout failure, user cannot perform primary tasks, urgent deadlines, angry customers demanding urgent refund.
+3. MEDIUM: Standard questions, non-critical bugs with workarounds, routine billing inquiries, normal priority requests.
+4. LOW: Minor cosmetic issues, typos, general feedback, feature suggestions, questions with no time sensitivity.
+
+CRITICAL RULES:
+- Return strictly the structured object matching the schema.
+- Be objective and accurate based only on the ticket subject and body content.`;
+
+    const userPrompt = `Classify this support ticket:\n\n${ticketDetails.join('\n\n')}`;
+
+    const classificationSchema = z.object({
+      category: z.enum([
+        'GENERAL_QUESTION',
+        'TECHNICAL_QUESTION',
+        'REFUND_REQUEST',
+      ]),
+      priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
+      reasoning: z.string(),
+    });
+
+    const result = await generateObject({
+      model,
+      schema: classificationSchema,
+      system: systemPrompt,
+      prompt: userPrompt,
+    });
+
+    return {
+      category: result.object.category as TicketCategory,
+      priority: result.object.priority as Priority,
+      reasoning: result.object.reasoning.trim(),
+    };
   }
 }

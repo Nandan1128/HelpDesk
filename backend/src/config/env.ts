@@ -41,7 +41,7 @@ const envSchema = z
           .filter(Boolean)
       ),
     GEMINI_API_KEY: z.string().optional().default(''),
-    GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+    GEMINI_MODEL: z.string().default(process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'),
     EMAIL_PROVIDER: z.enum(['mock', 'sendgrid', 'mailgun']).default('mock'),
     SENDGRID_API_KEY: z.string().optional().default(''),
     MAILGUN_API_KEY: z.string().optional().default(''),

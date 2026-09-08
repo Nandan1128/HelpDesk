@@ -210,6 +210,38 @@ describe('Ticket Routes & Logic Tests (GET /api/tickets)', () => {
     expect(res.status).toBe(401);
   });
 
+  test('POST /api/tickets rejects unauthenticated requests with 401', async () => {
+    const res = await fetch(`${baseUrl}/api/tickets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: 'Cannot login',
+        customerEmail: 'user@example.com',
+      }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  test('POST /api/tickets/classify rejects unauthenticated requests with 401', async () => {
+    const res = await fetch(`${baseUrl}/api/tickets/classify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: 'Cannot login',
+        body: 'Server gave 500 error',
+      }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  test('POST /api/tickets/:id/classify rejects unauthenticated requests with 401', async () => {
+    const res = await fetch(`${baseUrl}/api/tickets/${createdTicketIds[0]}/classify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(res.status).toBe(401);
+  });
+
   test('Ticket Details: Retrieves single ticket with messages and relation details', async () => {
     const ticket = await prisma.ticket.findUnique({
       where: { id: createdTicketIds[0] },

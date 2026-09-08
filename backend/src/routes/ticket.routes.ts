@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { prisma } from '../db/prisma.js';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { AIService } from '../services/ai.service.js';
+import { TicketClassifierService } from '../services/ticket-classifier.service.js';
 
 const router = Router();
 
@@ -170,6 +171,103 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
 });
 
 /**
+ * POST /api/tickets
+ * Creates a new support ticket manually (by Admin or Agent).
+ * Automatically triggers non-blocking Gemini AI classification if category or priority is not explicitly specified.
+ */
+router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const createTicketSchema = z.object({
+      subject: z.string().trim().min(1, 'Ticket subject is required'),
+      customerEmail: z.string().trim().email('Valid customer email is required'),
+      customerName: z.string().trim().optional(),
+      body: z.string().trim().optional(),
+      status: z.nativeEnum(TicketStatus).optional().default(TicketStatus.OPEN),
+      category: z.nativeEnum(TicketCategory).optional(),
+      priority: z.nativeEnum(Priority).optional(),
+      assignedToId: z.string().nullable().optional(),
+      autoClassify: z.boolean().optional().default(true),
+    });
+
+    const parseResult = createTicketSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: parseResult.error.errors[0]?.message || 'Invalid ticket data',
+      });
+    }
+
+    const {
+      subject,
+      customerEmail,
+      customerName,
+      body,
+      status,
+      category,
+      priority,
+      assignedToId,
+      autoClassify,
+    } = parseResult.data;
+
+    if (assignedToId) {
+      const agent = await prisma.user.findFirst({
+        where: { id: assignedToId, deletedAt: null },
+      });
+      if (!agent) {
+        return res.status(400).json({ error: 'Assigned agent not found or inactive' });
+      }
+    }
+
+    const newTicket = await prisma.ticket.create({
+      data: {
+        subject,
+        customerEmail: customerEmail.toLowerCase().trim(),
+        customerName: customerName || customerEmail.split('@')[0],
+        status,
+        category: category || TicketCategory.GENERAL_QUESTION,
+        priority: priority || Priority.MEDIUM,
+        assignedToId,
+        ...(body
+          ? {
+              messages: {
+                create: [
+                  {
+                    senderType: SenderType.CUSTOMER,
+                    senderEmail: customerEmail.toLowerCase().trim(),
+                    senderName: customerName || customerEmail.split('@')[0],
+                    body,
+                  },
+                ],
+              },
+            }
+          : {}),
+      },
+      include: {
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        messages: true,
+      },
+    });
+
+    // If autoClassify is true and category or priority was not explicitly specified,
+    // trigger non-blocking Gemini AI classification in the background
+    if (autoClassify && (!category || !priority)) {
+      TicketClassifierService.classifyTicketNonBlocking(newTicket.id);
+    }
+
+    return res.status(201).json({ ticket: newTicket });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to create ticket';
+    console.error('[Create Ticket Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
  * GET /api/tickets/agents
  * Returns list of active agents and admins who can be assigned tickets.
  */
@@ -318,6 +416,79 @@ router.patch('/:id', requireAuth, async (req: AuthenticatedRequest, res: Respons
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to update ticket';
     console.error('[Update Ticket Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * POST /api/tickets/classify
+ * Standalone endpoint to classify given subject and body (or ticketId) directly using Gemini.
+ * Supports non-blocking queueing when async=true.
+ */
+router.post('/classify', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const classifySchema = z.object({
+      ticketId: z.string().optional(),
+      subject: z.string().optional(),
+      body: z.string().optional(),
+      customerName: z.string().optional(),
+      customerEmail: z.string().optional(),
+      async: z.boolean().optional(),
+    });
+
+    const parseResult = classifySchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: parseResult.error.errors[0]?.message || 'Invalid classification payload',
+      });
+    }
+
+    const { ticketId, subject, body, customerName, customerEmail, async: isAsync } = parseResult.data;
+
+    if (ticketId) {
+      if (isAsync) {
+        TicketClassifierService.classifyTicketNonBlocking(ticketId);
+        return res.status(202).json({
+          success: true,
+          message: 'Ticket classification queued in background',
+          ticketId,
+        });
+      }
+
+      const result = await TicketClassifierService.classifyTicket(ticketId);
+      if (!result) {
+        return res.status(500).json({
+          error: 'Classification failed or GEMINI_API_KEY is not configured',
+        });
+      }
+
+      return res.json({
+        success: true,
+        ticket: result.ticket,
+        classification: result.classification,
+      });
+    }
+
+    if (!subject && !body) {
+      return res.status(400).json({
+        error: 'Either ticketId or subject/body is required for classification',
+      });
+    }
+
+    const classification = await AIService.classifyTicket({
+      subject: subject || '',
+      body: body || '',
+      customerName,
+      customerEmail,
+    });
+
+    return res.json({
+      success: true,
+      classification,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to classify ticket';
+    console.error('[Classify Endpoint Error]:', error);
     return res.status(500).json({ error: message });
   }
 });
@@ -637,6 +808,59 @@ router.post('/:id/summarize', requireAuth, async (req: AuthenticatedRequest, res
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to summarize ticket';
     console.error('[Summarize Ticket Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * POST /api/tickets/:id/classify
+ * Classifies a specific ticket using Google Gemini.
+ * Supports non-blocking background queueing via ?async=true or body { async: true } / { nonBlocking: true }.
+ * In default synchronous mode, awaits classification and returns updated ticket and metadata.
+ */
+router.post('/:id/classify', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const isAsync =
+      req.query.async === 'true' ||
+      req.body?.async === true ||
+      req.body?.nonBlocking === true;
+
+    const isNumeric = /^\d+$/.test(id);
+    const where: Prisma.TicketWhereUniqueInput = isNumeric
+      ? { ticketNumber: parseInt(id, 10) }
+      : { id };
+
+    const ticket = await prisma.ticket.findUnique({ where });
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    if (isAsync) {
+      // Trigger non-blocking classification
+      TicketClassifierService.classifyTicketNonBlocking(ticket.id);
+      return res.status(202).json({
+        success: true,
+        message: 'Ticket classification queued in background',
+        ticketId: ticket.id,
+      });
+    }
+
+    const result = await TicketClassifierService.classifyTicket(ticket.id);
+    if (!result) {
+      return res.status(500).json({
+        error: 'Classification failed or GEMINI_API_KEY is not configured',
+      });
+    }
+
+    return res.json({
+      success: true,
+      ticket: result.ticket,
+      classification: result.classification,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to classify ticket';
+    console.error('[Classify Ticket Error]:', error);
     return res.status(500).json({ error: message });
   }
 });

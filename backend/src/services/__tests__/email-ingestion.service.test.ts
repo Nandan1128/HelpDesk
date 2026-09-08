@@ -213,5 +213,25 @@ describe('EmailIngestionService - Unit & Integration Tests', () => {
       });
       expect(dbTicket?.status).toBe(TicketStatus.OPEN);
     });
+
+    test('returns immediately without blocking caller when ingesting email', async () => {
+      const uniqueSuffix = Date.now();
+      const startTime = Date.now();
+
+      const result = await EmailIngestionService.processInboundEmail({
+        from: `nonblocking_${uniqueSuffix}@example.com`,
+        to: 'support@ticketai.local',
+        subject: `Performance test ${uniqueSuffix}`,
+        body: 'Testing non-blocking ticket creation and classification.',
+      });
+
+      const elapsedMs = Date.now() - startTime;
+      expect(result.action).toBe('created_ticket');
+      expect(result.ticket.id).toBeDefined();
+      createdTicketIds.push(result.ticket.id);
+
+      // Email ingestion response must be non-blocking and return fast (well under 1000ms)
+      expect(elapsedMs).toBeLessThan(1000);
+    });
   });
 });

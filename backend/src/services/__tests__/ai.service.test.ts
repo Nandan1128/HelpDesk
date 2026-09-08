@@ -92,3 +92,79 @@ describe('AIService - Summarize Ticket Tests', () => {
     }
   });
 });
+
+describe('AIService - Classify Ticket Tests', () => {
+  test('rejects when both subject and body are empty', async () => {
+    await expect(
+      AIService.classifyTicket({
+        subject: '',
+        body: '',
+      })
+    ).rejects.toThrow('Ticket subject or body must be provided for classification');
+
+    await expect(
+      AIService.classifyTicket({
+        subject: '   ',
+        body: '  \n  ',
+      })
+    ).rejects.toThrow('Ticket subject or body must be provided for classification');
+  });
+
+  test('rejects when GEMINI_API_KEY is missing', async () => {
+    await expect(
+      AIService.classifyTicket({
+        subject: 'Cannot login to application',
+        apiKey: '',
+      })
+    ).rejects.toThrow();
+  });
+
+  test('classifies a technical issue ticket accurately', async () => {
+    const apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      const result = await AIService.classifyTicket({
+        subject: 'Database connection pool exhausted 500 error',
+        body: 'Our production API is failing with Error 500: PrismaClientInitializationError: Can not connect to database at localhost:5432.',
+        apiKey,
+      });
+
+      expect(result.category).toBe('TECHNICAL_QUESTION');
+      expect(['HIGH', 'URGENT']).toContain(result.priority);
+      expect(typeof result.reasoning).toBe('string');
+      expect(result.reasoning.length).toBeGreaterThan(5);
+    }
+  });
+
+  test('classifies a refund request ticket accurately', async () => {
+    const apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      const result = await AIService.classifyTicket({
+        subject: 'Double charged on my credit card, want refund',
+        body: 'I was charged twice for the monthly subscription on September 1st. Please refund the duplicate transaction immediately.',
+        apiKey,
+      });
+
+      expect(result.category).toBe('REFUND_REQUEST');
+      expect(['HIGH', 'URGENT', 'MEDIUM']).toContain(result.priority);
+      expect(typeof result.reasoning).toBe('string');
+      expect(result.reasoning.length).toBeGreaterThan(5);
+    }
+  });
+
+  test('classifies a general question ticket accurately', async () => {
+    const apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      const result = await AIService.classifyTicket({
+        subject: 'How do I change my profile avatar?',
+        body: 'Hi support team, could you please tell me where I can upload a custom profile image in settings? Thanks!',
+        apiKey,
+      });
+
+      expect(result.category).toBe('GENERAL_QUESTION');
+      expect(['LOW', 'MEDIUM']).toContain(result.priority);
+      expect(typeof result.reasoning).toBe('string');
+      expect(result.reasoning.length).toBeGreaterThan(5);
+    }
+  });
+});
+

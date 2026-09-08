@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '../db/prisma.js';
 import { env } from '../config/env.js';
+import { TicketClassifierService } from './ticket-classifier.service.js';
 
 export const inboundEmailSchema = z
   .object({
@@ -207,6 +208,9 @@ export class EmailIngestionService {
         messages: true,
       },
     });
+
+    // Automatically classify the new ticket using Gemini in a non-blocking fashion
+    TicketClassifierService.classifyTicketNonBlocking(newTicket.id);
 
     return {
       action: 'created_ticket',

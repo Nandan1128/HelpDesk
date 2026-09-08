@@ -31,7 +31,7 @@
 
 ## Phase 4: Ticket CRUD
 
-- [ ] Implement create ticket API endpoint
+- [x] Implement create ticket API endpoint
 - [x] Implement list tickets API endpoint (with filtering by status and category, sorting)
 - [x] Implement get ticket API endpoint
 - [x] Implement update ticket API endpoint (change status, assign agent)
@@ -41,7 +41,7 @@
 ## Phase 5: AI Features
 
 - [x] Set up Google Gemini API integration with Vercel AI SDK (`ai` & `@ai-sdk/google`)
-- [ ] Implement auto-classification endpoint (categorize incoming tickets)
+- [x] Implement auto-classification endpoint (categorize incoming tickets)
 - [ ] Implement AI summary endpoint (generate ticket summary)
 - [x] Implement AI Polish button to improve agent replies using Gemini API key
 - [ ] Implement AI suggested reply endpoint with RAG
