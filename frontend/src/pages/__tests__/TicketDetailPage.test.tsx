@@ -119,23 +119,15 @@ describe('TicketDetailPage Component Tests', () => {
       ).toBeInTheDocument();
     });
 
-    it('displays the AI Suggested Reply card and populates composer on click', async () => {
-      const user = userEvent.setup();
+    it('does not display the AI Suggested Reply card and renders Polish button', async () => {
       renderTicketDetailPage();
 
       await waitFor(() => {
-        expect(screen.getByText('AI Suggested Reply')).toBeInTheDocument();
+        expect(screen.getByText('Broken payment gateway during checkout')).toBeInTheDocument();
       });
 
-      expect(
-        screen.getByText(/we apologize for the trouble. Your payment was automatically reversed/i)
-      ).toBeInTheDocument();
-
-      const useDraftBtn = screen.getByRole('button', { name: /use this draft/i });
-      await user.click(useDraftBtn);
-
-      const textarea = screen.getByPlaceholderText(/write your response to the customer/i);
-      expect(textarea).toHaveValue(mockTicket.aiSuggestedReply);
+      expect(screen.queryByText('AI Suggested Reply')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /polish/i })).toBeInTheDocument();
     });
   });
 

@@ -80,31 +80,37 @@ describe('ConversationThread Component Tests', () => {
       expect(screen.queryByText('AI Conversation Summary')).not.toBeInTheDocument();
     });
 
-    it('renders AI suggested reply and populates textarea when clicking "Use This Draft"', async () => {
-      const user = userEvent.setup();
+    it('does not render AI suggested reply card or Insert AI Draft button', () => {
       render(<ConversationThread ticket={mockTicket} />);
 
-      expect(screen.getByText('AI Suggested Reply')).toBeInTheDocument();
-      expect(
-        screen.getByText(/Hello Jane, please ensure third-party cookies are enabled/i)
-      ).toBeInTheDocument();
-
-      const useDraftBtn = screen.getByRole('button', { name: /use this draft/i });
-      await user.click(useDraftBtn);
-
-      const textarea = screen.getByPlaceholderText(/write your response to the customer/i);
-      expect(textarea).toHaveValue(mockTicket.aiSuggestedReply);
+      expect(screen.queryByText('AI Suggested Reply')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /use this draft/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /insert ai draft/i })).not.toBeInTheDocument();
     });
 
-    it('populates textarea when clicking "Insert AI Draft" in the composer header', async () => {
+    it('renders Polish button to the left of Send & Resolve and calls onPolish when clicked', async () => {
       const user = userEvent.setup();
-      render(<ConversationThread ticket={mockTicket} />);
+      const onPolish = vi.fn().mockResolvedValue('Polished response text');
+      render(<ConversationThread ticket={mockTicket} onPolish={onPolish} />);
 
-      const insertBtn = screen.getByRole('button', { name: /insert ai draft/i });
-      await user.click(insertBtn);
+      const polishBtn = screen.getByRole('button', { name: /polish/i });
+      const sendAndResolveBtn = screen.getByRole('button', { name: /send & resolve/i });
+
+      expect(polishBtn).toBeInTheDocument();
+      expect(polishBtn).toBeDisabled();
+
+      // Verify DOM position: polish button is to the left of Send & Resolve button
+      expect(polishBtn.compareDocumentPosition(sendAndResolveBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
       const textarea = screen.getByPlaceholderText(/write your response to the customer/i);
-      expect(textarea).toHaveValue(mockTicket.aiSuggestedReply);
+      await user.type(textarea, 'raw draft');
+      expect(polishBtn).toBeEnabled();
+
+      await user.click(polishBtn);
+      expect(onPolish).toHaveBeenCalledWith('raw draft');
+      await waitFor(() => {
+        expect(textarea).toHaveValue('Polished response text');
+      });
     });
   });
 

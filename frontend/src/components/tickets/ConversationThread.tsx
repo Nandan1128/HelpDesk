@@ -29,6 +29,7 @@ export interface ConversationThreadProps {
   ticketId?: string;
   onTicketUpdated?: (updatedTicket: TicketDetail) => void;
   currentUserName?: string;
+  onPolish?: (replyText: string) => Promise<string> | void;
 }
 
 export function ConversationThread({
@@ -36,19 +37,35 @@ export function ConversationThread({
   ticketId,
   onTicketUpdated,
   currentUserName = 'Support Agent',
+  onPolish,
 }: ConversationThreadProps) {
   const [replyBody, setReplyBody] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [polishing, setPolishing] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
   const [replySuccess, setReplySuccess] = useState<string | null>(null);
 
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const targetId = ticketId || ticket?.id;
 
-  const handleUseAiDraft = () => {
-    if (!ticket?.aiSuggestedReply) return;
-    setReplyBody(ticket.aiSuggestedReply);
-    replyTextareaRef.current?.focus();
+  const handlePolish = async () => {
+    const trimmed = replyBody.trim();
+    if (!trimmed) return;
+    setPolishing(true);
+    setReplyError(null);
+    try {
+      if (onPolish) {
+        const result = await onPolish(trimmed);
+        if (typeof result === 'string' && result.trim()) {
+          setReplyBody(result);
+        }
+      }
+    } catch (err: any) {
+      setReplyError(err?.message || 'Failed to polish reply.');
+    } finally {
+      setPolishing(false);
+      replyTextareaRef.current?.focus();
+    }
   };
 
   const handleSendReply = async (resolveTicket = false) => {
@@ -108,34 +125,6 @@ export function ConversationThread({
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0 text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
             {ticket.aiSummary}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* AI Suggested Response Card (if present) */}
-      {ticket.aiSuggestedReply && (
-        <Card className="border-indigo-500/30 bg-indigo-500/5 shadow-xs overflow-hidden">
-          <CardHeader className="p-4 sm:p-5 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
-                <Bot className="w-4 h-4" />
-                <span>AI Suggested Reply</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleUseAiDraft}
-                className="h-7 text-xs border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10"
-              >
-                <Sparkles className="w-3 h-3 mr-1" />
-                Use This Draft
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-5 pt-0">
-            <div className="text-sm text-foreground/90 whitespace-pre-wrap bg-background/80 p-3.5 rounded-lg border border-indigo-500/20 font-sans leading-relaxed">
-              {ticket.aiSuggestedReply}
-            </div>
           </CardContent>
         </Card>
       )}
@@ -246,24 +235,10 @@ export function ConversationThread({
       {/* Reply Composer Box */}
       <Card className="border-border bg-card shadow-xs">
         <CardHeader className="p-4 sm:p-5 border-b border-border/60">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Send className="w-4 h-4 text-primary" />
-              Reply to Customer
-            </CardTitle>
-            {ticket.aiSuggestedReply && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleUseAiDraft}
-                className="text-xs text-primary hover:text-primary/90 h-7"
-              >
-                <Sparkles className="w-3 h-3 mr-1" />
-                Insert AI Draft
-              </Button>
-            )}
-          </div>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Send className="w-4 h-4 text-primary" />
+            Reply to Customer
+          </CardTitle>
           <CardDescription className="text-xs">
             Your response will be recorded in the thread and dispatched to{' '}
             <strong className="text-foreground">{ticket.customerEmail}</strong>.
@@ -306,10 +281,27 @@ export function ConversationThread({
 
             <div className="flex items-center space-x-2">
               <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handlePolish}
+                disabled={sendingReply || polishing || !replyBody.trim()}
+                className="text-xs h-9"
+                title="Polish response with AI"
+              >
+                {polishing ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                )}
+                <span>Polish</span>
+              </Button>
+
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleSendReply(true)}
-                disabled={sendingReply || !replyBody.trim()}
+                disabled={sendingReply || polishing || !replyBody.trim()}
                 className="text-xs h-9"
                 title="Send reply and mark ticket as RESOLVED"
               >
@@ -324,7 +316,7 @@ export function ConversationThread({
               <Button
                 size="sm"
                 onClick={() => handleSendReply(false)}
-                disabled={sendingReply || !replyBody.trim()}
+                disabled={sendingReply || polishing || !replyBody.trim()}
                 className="text-xs h-9 shadow-xs"
               >
                 {sendingReply ? (
