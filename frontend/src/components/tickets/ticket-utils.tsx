@@ -12,6 +12,7 @@ export function formatDate(dateString?: string): string {
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
+      second: '2-digit',
     });
   } catch {
     return dateString;
@@ -20,6 +21,25 @@ export function formatDate(dateString?: string): string {
 
 export function getStatusBadge(status: TicketStatus) {
   switch (status) {
+    case 'NEW':
+      return (
+        <Badge
+          variant="outline"
+          className="bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30 gap-1.5 font-semibold"
+        >
+          New
+        </Badge>
+      );
+    case 'PROCESSING':
+      return (
+        <Badge
+          variant="outline"
+          className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1.5 font-semibold"
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+          Processing
+        </Badge>
+      );
     case 'OPEN':
       return (
         <Badge

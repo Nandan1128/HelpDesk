@@ -3,6 +3,7 @@ import { createGoogle } from '@ai-sdk/google';
 import { z } from 'zod';
 import { TicketCategory, Priority } from '@prisma/client';
 import { env } from '../config/env.js';
+import { KnowledgeBaseService } from './knowledge-base.service.js';
 
 export interface TicketContext {
   ticketNumber?: number;
@@ -59,6 +60,26 @@ export interface TicketClassificationResult {
   category: TicketCategory;
   priority: Priority;
   reasoning: string;
+}
+
+export interface AutoResolveOptions {
+  subject: string;
+  body?: string;
+  customerName?: string | null;
+  customerEmail?: string;
+  knowledgeBaseContent?: string;
+  apiKey?: string;
+  modelName?: string;
+}
+
+export interface AutoResolveEvaluationResult {
+  category: TicketCategory;
+  priority: Priority;
+  canAutoResolve: boolean;
+  confidence: number;
+  resolutionMessage?: string;
+  reasoning: string;
+  escalationRuleTriggered?: string;
 }
 
 export class AIService {
@@ -283,6 +304,114 @@ CRITICAL RULES:
       category: result.object.category as TicketCategory,
       priority: result.object.priority as Priority,
       reasoning: result.object.reasoning.trim(),
+    };
+  }
+
+  /**
+   * Evaluates an incoming ticket against the official knowledge base and internal escalation rules.
+   * Classifies the ticket, checks Section 10 escalation conditions, and determines whether
+   * the ticket can be safely auto-resolved. If auto-resolvable, generates a grounded, professional resolution message.
+   */
+  static async evaluateTicketForAutoResolution({
+    subject,
+    body,
+    customerName,
+    customerEmail,
+    knowledgeBaseContent,
+    apiKey,
+    modelName,
+  }: AutoResolveOptions): Promise<AutoResolveEvaluationResult> {
+    const trimmedSubject = subject?.trim() || '';
+    const trimmedBody = body?.trim() || '';
+
+    if (!trimmedSubject && !trimmedBody) {
+      throw new Error('Ticket subject or body must be provided for auto-resolution evaluation');
+    }
+
+    const kbContent = knowledgeBaseContent || KnowledgeBaseService.getContent();
+    const model = this.getGoogleModel(apiKey, modelName);
+
+    const ticketDetails: string[] = [];
+    if (trimmedSubject) ticketDetails.push(`Subject: ${trimmedSubject}`);
+    if (trimmedBody) ticketDetails.push(`Customer Inquiry / Initial Message:\n${trimmedBody}`);
+    if (customerName) ticketDetails.push(`Customer Name: ${customerName}`);
+    if (customerEmail) ticketDetails.push(`Customer Email: ${customerEmail}`);
+
+    const systemPrompt = `You are an expert AI customer support specialist and triage bot for Code with Mosh.
+Your task is to analyze an incoming customer support ticket, classify it, and determine whether it can be safely and automatically resolved using the official support Knowledge Base.
+
+--- OFFICIAL KNOWLEDGE BASE ---
+${kbContent}
+--- END KNOWLEDGE BASE ---
+
+CRITICAL AUTO-RESOLUTION & ESCALATION POLICIES:
+1. Section 10 Escalation Rules (Internal Policy):
+   You MUST set canAutoResolve to FALSE and escalate to a human agent if ANY of these conditions apply:
+   - Legal Threats: The customer mentions lawyers, lawsuits, attorneys, legal representation, or taking legal action.
+   - Refund Outside 30-Day Window: The customer requests a refund for a course purchased more than 30 days ago (or explicitly states their purchase is older than 30 days).
+   - Chargebacks / Payment Disputes: The customer mentions disputing a credit card charge with their bank, filing a chargeback, or unauthorized credit card transactions.
+   - Security Concerns: The issue involves compromised accounts, stolen passwords/credentials, suspicious logins, or security breaches.
+   - Low Confidence: System confidence score is low (< 0.80) or the inquiry is ambiguous, contradictory, or cannot be resolved with certainty.
+2. Actionability by Human Only:
+   - Account Changes (Section 9): If the customer asks to change their registered email address, human verification and manual database updating is required; set canAutoResolve to FALSE.
+   - Complex account investigations or manual database operations cannot be auto-resolved; set canAutoResolve to FALSE.
+3. Safe Auto-Resolution:
+   - If the customer's question is directly, accurately, and definitively answered by the Knowledge Base (e.g., password reset instructions, course non-transferability, lifetime access definition, refund eligibility rules within 30 days, completion certificates, video playback troubleshooting steps, coupon code validity):
+     - Set canAutoResolve to TRUE.
+     - Set confidence to a high value (>= 0.80).
+     - Provide resolutionMessage: A friendly, polite, concise, and helpful response grounded strictly in the Knowledge Base.
+       - Address the customer by name if known (e.g. "Hi [Name],").
+       - State the solution, policy, or step-by-step instructions directly and clearly.
+       - Include a polite sign-off (e.g. "Best regards,\nCode with Mosh Support").
+       - Do NOT include markdown code block fences (\`\`\`) around the reply.
+
+CATEGORIES (choose exactly one):
+- GENERAL_QUESTION: General inquiries, how-to questions, account settings, feature questions, certificate inquiries, lifetime access questions, or routine non-technical inquiries.
+- TECHNICAL_QUESTION: Software bugs, system errors, video playback issues, crashes, broken features, performance issues.
+- REFUND_REQUEST: Explicit or implicit requests for refunds, money back, billing questions, duplicate charges.
+
+PRIORITIES (choose exactly one):
+- URGENT: Critical outages, severe security vulnerabilities, active unauthorized charges, or legal threats.
+- HIGH: Payment failures, user blocked from learning, angry customers demanding urgent refund.
+- MEDIUM: Standard questions, non-critical technical inquiries with workarounds, normal refund questions.
+- LOW: Minor cosmetic issues, general feedback, questions with no time sensitivity.`;
+
+    const userPrompt = `Evaluate this support ticket for auto-resolution and classification:\n\n${ticketDetails.join('\n\n')}`;
+
+    const autoResolveSchema = z.object({
+      category: z.enum([
+        'GENERAL_QUESTION',
+        'TECHNICAL_QUESTION',
+        'REFUND_REQUEST',
+      ]),
+      priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
+      canAutoResolve: z.boolean(),
+      confidence: z.number().min(0).max(1),
+      resolutionMessage: z.string().optional(),
+      reasoning: z.string(),
+      escalationRuleTriggered: z.string().optional(),
+    });
+
+    const result = await generateObject({
+      model,
+      schema: autoResolveSchema,
+      system: systemPrompt,
+      prompt: userPrompt,
+    });
+
+    let cleanedResolutionMessage = result.object.resolutionMessage?.trim();
+    if (cleanedResolutionMessage && cleanedResolutionMessage.startsWith('```') && cleanedResolutionMessage.endsWith('```')) {
+      cleanedResolutionMessage = cleanedResolutionMessage.replace(/^```(?:markdown|text)?\n?/, '').replace(/\n?```$/, '').trim();
+    }
+
+    return {
+      category: result.object.category as TicketCategory,
+      priority: result.object.priority as Priority,
+      canAutoResolve: Boolean(result.object.canAutoResolve && result.object.confidence >= 0.8 && cleanedResolutionMessage),
+      confidence: result.object.confidence,
+      resolutionMessage: cleanedResolutionMessage,
+      reasoning: result.object.reasoning.trim(),
+      escalationRuleTriggered: result.object.escalationRuleTriggered?.trim(),
     };
   }
 }

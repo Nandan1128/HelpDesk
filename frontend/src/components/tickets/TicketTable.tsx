@@ -115,6 +115,7 @@ export function TicketTable({
         year: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
+        second: '2-digit',
       });
     } catch {
       return dateString;
@@ -123,6 +124,25 @@ export function TicketTable({
 
   const getStatusBadge = (status: TicketStatus) => {
     switch (status) {
+      case 'NEW':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30 gap-1 font-semibold"
+          >
+            New
+          </Badge>
+        );
+      case 'PROCESSING':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 font-semibold"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            Processing
+          </Badge>
+        );
       case 'OPEN':
         return (
           <Badge
@@ -430,9 +450,14 @@ export function TicketTable({
     []
   );
 
+  // Filter out any tickets being resolved by AI (NEW or PROCESSING) from table display
+  const visibleTickets = useMemo(() => {
+    return tickets.filter((t) => t.status !== 'NEW' && t.status !== 'PROCESSING');
+  }, [tickets]);
+
   // TanStack Table initialization with manual server-side sorting enabled
   const table = useReactTable({
-    data: tickets,
+    data: visibleTickets,
     columns,
     state: {
       sorting: currentSorting,
@@ -462,7 +487,7 @@ export function TicketTable({
   }
 
   // Empty state
-  if (tickets.length === 0) {
+  if (visibleTickets.length === 0) {
     return (
       <Card className="border-border bg-card shadow-sm text-center py-12">
         <CardContent className="flex flex-col items-center justify-center space-y-4">

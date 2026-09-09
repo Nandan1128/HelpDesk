@@ -75,6 +75,18 @@ export function RightPanel({
         <CardContent className="p-4 sm:p-5 space-y-4">
           {/* Status Selector */}
           <div className="space-y-1.5">
+            {ticket.status === 'PROCESSING' && (
+              <div className="p-2 mb-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span>AI is evaluating this ticket for auto-resolution...</span>
+              </div>
+            )}
+            {ticket.status === 'NEW' && (
+              <div className="p-2 mb-2 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-600 dark:text-sky-400 text-xs flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-sky-500" />
+                <span>New ticket awaiting AI evaluation...</span>
+              </div>
+            )}
             <label className="text-xs font-semibold text-muted-foreground">
               Status
             </label>

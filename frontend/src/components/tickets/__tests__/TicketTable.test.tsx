@@ -223,4 +223,77 @@ describe('TicketTable Component Tests (TanStack Table Server-Side Sorting)', () 
       expect(onSelectTicketMock).toHaveBeenCalledWith(mockTickets[0]);
     });
   });
+
+  describe('5. AI Resolution States Filtering (NEW and PROCESSING)', () => {
+    it('does not render tickets that are NEW or PROCESSING (being resolved by AI)', () => {
+      const ticketsWithAiStates: TicketItem[] = [
+        ...mockTickets,
+        {
+          id: 'ticket-new',
+          ticketNumber: 104,
+          subject: 'Brand new ticket arriving',
+          status: 'NEW',
+          category: 'GENERAL_QUESTION',
+          priority: 'MEDIUM',
+          customerEmail: 'new@example.com',
+          customerName: 'New Arrival',
+          assignedTo: null,
+          createdAt: '2026-03-02T10:00:00.000Z',
+          updatedAt: '2026-03-02T10:00:00.000Z',
+        },
+        {
+          id: 'ticket-proc',
+          ticketNumber: 105,
+          subject: 'Ticket currently being evaluated by AI',
+          status: 'PROCESSING',
+          category: 'TECHNICAL_QUESTION',
+          priority: 'HIGH',
+          customerEmail: 'proc@example.com',
+          customerName: 'Processing Customer',
+          assignedTo: null,
+          createdAt: '2026-03-02T11:00:00.000Z',
+          updatedAt: '2026-03-02T11:00:00.000Z',
+        },
+      ];
+
+      render(<TicketTable tickets={ticketsWithAiStates} />);
+
+      // Actionable tickets must be visible
+      expect(screen.getByTestId('ticket-row-ticket-1')).toBeInTheDocument();
+      expect(screen.getByTestId('ticket-row-ticket-2')).toBeInTheDocument();
+      expect(screen.getByTestId('ticket-row-ticket-3')).toBeInTheDocument();
+      expect(screen.getAllByText('Server error on dashboard').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Billing inquiry regarding invoice #42').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('How to change email address').length).toBeGreaterThan(0);
+
+      // NEW and PROCESSING tickets must NOT be displayed on the ticket list
+      expect(screen.queryByTestId('ticket-row-ticket-new')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('ticket-row-ticket-proc')).not.toBeInTheDocument();
+      expect(screen.queryByText('Brand new ticket arriving')).not.toBeInTheDocument();
+      expect(screen.queryByText('Ticket currently being evaluated by AI')).not.toBeInTheDocument();
+    });
+
+    it('displays empty state when only NEW or PROCESSING tickets are provided', () => {
+      const onlyAiProcessingTickets: TicketItem[] = [
+        {
+          id: 'ticket-new',
+          ticketNumber: 104,
+          subject: 'Brand new ticket arriving',
+          status: 'NEW',
+          category: 'GENERAL_QUESTION',
+          priority: 'MEDIUM',
+          customerEmail: 'new@example.com',
+          customerName: 'New Arrival',
+          assignedTo: null,
+          createdAt: '2026-03-02T10:00:00.000Z',
+          updatedAt: '2026-03-02T10:00:00.000Z',
+        },
+      ];
+
+      render(<TicketTable tickets={onlyAiProcessingTickets} />);
+
+      expect(screen.getByText('No tickets in the queue')).toBeInTheDocument();
+      expect(screen.queryByText('Brand new ticket arriving')).not.toBeInTheDocument();
+    });
+  });
 });

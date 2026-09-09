@@ -5,6 +5,7 @@ import { prisma } from '../db/prisma.js';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { AIService } from '../services/ai.service.js';
 import { TicketClassifierService } from '../services/ticket-classifier.service.js';
+import { AutoResolveService } from '../services/auto-resolve.service.js';
 
 const router = Router();
 
@@ -60,11 +61,11 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
       where.OR = orConditions;
     }
 
-    // Status filter
-    if (statusFilter && statusFilter !== 'ALL') {
-      if (['OPEN', 'RESOLVED', 'CLOSED'].includes(statusFilter)) {
-        where.status = statusFilter as TicketStatus;
-      }
+    // Status filter: Never show tickets being resolved by AI (NEW or PROCESSING) on the ticket list
+    if (statusFilter && ['OPEN', 'RESOLVED', 'CLOSED'].includes(statusFilter)) {
+      where.status = statusFilter as TicketStatus;
+    } else {
+      where.status = { notIn: [TicketStatus.NEW, TicketStatus.PROCESSING] };
     }
 
     // Priority filter
@@ -142,13 +143,16 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
       return acc;
     }, {});
 
-    const totalAllTickets = Object.values(statusCounts).reduce((sum, val) => sum + val, 0);
+    const openCount = statusCounts[TicketStatus.OPEN] || 0;
+    const resolvedCount = statusCounts[TicketStatus.RESOLVED] || 0;
+    const closedCount = statusCounts[TicketStatus.CLOSED] || 0;
+    const totalActionableTickets = openCount + resolvedCount + closedCount;
 
     const metrics = {
-      total: totalAllTickets,
-      open: statusCounts[TicketStatus.OPEN] || 0,
-      resolved: statusCounts[TicketStatus.RESOLVED] || 0,
-      closed: statusCounts[TicketStatus.CLOSED] || 0,
+      total: totalActionableTickets,
+      open: openCount,
+      resolved: resolvedCount,
+      closed: closedCount,
       unassigned: unassignedCount,
       urgentOrHigh: highOrUrgentCount,
     };
@@ -944,6 +948,44 @@ router.post('/:id/messages', requireAuth, async (req: AuthenticatedRequest, res:
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to post message';
     console.error('[Post Message Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * POST /api/tickets/:id/auto-resolve
+ * Evaluates and processes a ticket against the knowledge base for auto-resolution.
+ * Supports lookup by numeric ticketNumber or UUID.
+ * Accessible to authenticated users.
+ */
+router.post('/:id/auto-resolve', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const isNumeric = /^\d+$/.test(id);
+    const where: Prisma.TicketWhereUniqueInput = isNumeric
+      ? { ticketNumber: parseInt(id, 10) }
+      : { id };
+
+    const ticket = await prisma.ticket.findUnique({ where });
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    const result = await AutoResolveService.processTicket(ticket.id);
+    if (!result) {
+      return res.status(500).json({ error: 'Failed to process auto-resolution' });
+    }
+
+    return res.json({
+      success: true,
+      ticket: result.ticket,
+      evaluation: result.evaluation,
+      autoResolved: result.autoResolved,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to auto-resolve ticket';
+    console.error('[Auto-Resolve Route Error]:', error);
     return res.status(500).json({ error: message });
   }
 });

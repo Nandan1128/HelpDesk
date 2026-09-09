@@ -69,23 +69,23 @@ export class QueueService {
         localConcurrency: 2,
       },
       async (jobs) => {
-        const { TicketClassifierService } = await import('./ticket-classifier.service.js');
+        const { AutoResolveService } = await import('./auto-resolve.service.js');
         for (const job of jobs) {
           const { ticketId, apiKey, modelName } = job.data;
-          console.log(`[pg-boss Worker] Processing classification for ticket ${ticketId} (Job: ${job.id})`);
+          console.log(`[pg-boss Worker] Processing ticket arrival & auto-resolution for ticket ${ticketId} (Job: ${job.id})`);
           try {
-            const result = await TicketClassifierService.classifyTicket(ticketId, {
+            const result = await AutoResolveService.processTicket(ticketId, {
               apiKey,
               modelName,
             });
             if (result) {
               console.log(
-                `[pg-boss Worker] Successfully classified ticket #${result.ticket.ticketNumber} -> Category: ${result.ticket.category}, Priority: ${result.ticket.priority}`
+                `[pg-boss Worker] Successfully processed ticket #${result.ticket.ticketNumber} -> Status: ${result.ticket.status}, Category: ${result.ticket.category}, Priority: ${result.ticket.priority}`
               );
             }
           } catch (error) {
             console.error(
-              `[pg-boss Worker] Classification failed for ticket ${ticketId} (Job: ${job.id}):`,
+              `[pg-boss Worker] Ticket processing failed for ticket ${ticketId} (Job: ${job.id}):`,
               error
             );
             // Rethrow so pg-boss records job failure and handles retries according to policy

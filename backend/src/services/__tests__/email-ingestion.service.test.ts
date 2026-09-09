@@ -101,7 +101,7 @@ describe('EmailIngestionService - Unit & Integration Tests', () => {
       expect(result.ticket.subject).toBe(subject);
       expect(result.ticket.customerEmail).toBe(senderEmail);
       expect(result.ticket.customerName).toBe('Test Customer');
-      expect(result.ticket.status).toBe(TicketStatus.OPEN);
+      expect(result.ticket.status).toBe(TicketStatus.NEW);
       expect(result.ticket.ticketNumber).toBeGreaterThan(0);
 
       // Check initial message

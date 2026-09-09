@@ -244,6 +244,56 @@ describe('Ticket Routes & Logic Tests (GET /api/tickets)', () => {
     expect(res.status).toBe(401);
   });
 
+  test('POST /api/tickets/:id/auto-resolve rejects unauthenticated requests with 401', async () => {
+    const res = await fetch(`${baseUrl}/api/tickets/${createdTicketIds[0]}/auto-resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  test('Ticket List Filtering: Excludes NEW and PROCESSING tickets from the active list', async () => {
+    const now = Date.now();
+
+    // Create a NEW ticket and a PROCESSING ticket
+    const newTicket = await prisma.ticket.create({
+      data: {
+        subject: `New Arriving Ticket ${now}`,
+        customerEmail: `new_arrive_${now}@example.com`,
+        status: TicketStatus.NEW,
+        priority: Priority.MEDIUM,
+        category: TicketCategory.GENERAL_QUESTION,
+      },
+    });
+    createdTicketIds.push(newTicket.id);
+
+    const processingTicket = await prisma.ticket.create({
+      data: {
+        subject: `Processing Ticket ${now}`,
+        customerEmail: `processing_${now}@example.com`,
+        status: TicketStatus.PROCESSING,
+        priority: Priority.HIGH,
+        category: TicketCategory.TECHNICAL_QUESTION,
+      },
+    });
+    createdTicketIds.push(processingTicket.id);
+
+    // Query database simulating GET /api/tickets default filter: notIn [NEW, PROCESSING]
+    const activeTickets = await prisma.ticket.findMany({
+      where: {
+        id: { in: createdTicketIds },
+        status: { notIn: [TicketStatus.NEW, TicketStatus.PROCESSING] },
+      },
+    });
+
+    const activeIds = activeTickets.map((t) => t.id);
+    expect(activeIds).not.toContain(newTicket.id);
+    expect(activeIds).not.toContain(processingTicket.id);
+
+    // The 3 initial tickets (CLOSED, RESOLVED, OPEN) should be in activeTickets
+    expect(activeTickets.length).toBe(3);
+  });
+
   test('Ticket Details: Retrieves single ticket with messages and relation details', async () => {
     const ticket = await prisma.ticket.findUnique({
       where: { id: createdTicketIds[0] },

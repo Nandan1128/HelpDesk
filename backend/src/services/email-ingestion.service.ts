@@ -188,7 +188,7 @@ export class EmailIngestionService {
         subject: data.subject.trim(),
         customerEmail: senderEmail,
         customerName: senderName,
-        status: TicketStatus.OPEN,
+        status: TicketStatus.NEW,
         category: TicketCategory.GENERAL_QUESTION,
         priority: Priority.MEDIUM,
         messages: {
