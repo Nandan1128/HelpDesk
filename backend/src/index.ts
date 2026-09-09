@@ -8,6 +8,7 @@ import { prisma } from './db/prisma.js';
 import { auth } from './lib/auth.js';
 import { requireAuth, requireRole, AuthenticatedRequest } from './middleware/auth.middleware.js';
 import { userRoutes, emailRoutes, ticketRoutes } from './routes/index.js';
+import { QueueService } from './services/queue.service.js';
 
 const app = express();
 
@@ -117,9 +118,33 @@ app.use('/api/webhooks/email', emailRoutes);
 // Ticket Management Routes
 app.use('/api/tickets', ticketRoutes);
 
-const server = app.listen(env.PORT, () => {
+const server = app.listen(env.PORT, async () => {
   console.log(`🚀 TicketAI Backend server running on http://localhost:${env.PORT}`);
   console.log(`📡 Environment: ${env.NODE_ENV}`);
+  try {
+    await QueueService.start();
+  } catch (error) {
+    console.error('Failed to initialize pg-boss queue service:', error);
+  }
 });
+
+// Graceful process shutdown
+const shutdown = async (signal: string) => {
+  console.log(`\nReceived ${signal}. Gracefully shutting down...`);
+  try {
+    await QueueService.stop();
+    await prisma.$disconnect();
+    server.close(() => {
+      console.log('HTTP server closed.');
+      process.exit(0);
+    });
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 export default app;

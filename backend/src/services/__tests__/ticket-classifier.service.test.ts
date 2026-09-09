@@ -3,6 +3,7 @@ import { TicketClassifierService } from '../ticket-classifier.service.js';
 import { prisma } from '../../db/prisma.js';
 import { TicketCategory, Priority, TicketStatus, SenderType } from '@prisma/client';
 import { env } from '../../config/env.js';
+import { QueueService } from '../queue.service.js';
 
 describe('TicketClassifierService Tests', () => {
   let createdTicketId: string;
@@ -38,6 +39,7 @@ describe('TicketClassifierService Tests', () => {
         where: { id: createdTicketId },
       });
     }
+    await QueueService.stop();
   });
 
   test('returns null gracefully when ticket does not exist', async () => {
@@ -67,7 +69,7 @@ describe('TicketClassifierService Tests', () => {
 
     expect(promise).toBeInstanceOf(Promise);
     const result = await promise;
-    expect(result).toBeNull();
+    expect(typeof result === 'string' || result === null).toBe(true);
   });
 
   test('classifyTicket classifies and updates ticket when API key is available', async () => {
@@ -79,12 +81,12 @@ describe('TicketClassifierService Tests', () => {
 
       expect(result).not.toBeNull();
       expect(result?.classification.category).toBe(TicketCategory.TECHNICAL_QUESTION);
-      expect(['HIGH', 'URGENT']).toContain(result?.classification.priority);
+      expect(['HIGH', 'URGENT']).toContain(result!.classification.priority);
 
       // Verify DB was updated
       const updated = await prisma.ticket.findUnique({ where: { id: createdTicketId } });
       expect(updated?.category).toBe(TicketCategory.TECHNICAL_QUESTION);
-      expect(['HIGH', 'URGENT']).toContain(updated?.priority);
+      expect(['HIGH', 'URGENT']).toContain(updated!.priority);
     }
   });
 
@@ -100,17 +102,23 @@ describe('TicketClassifierService Tests', () => {
         },
       });
 
-      // Fire non-blocking classification
-      const task = TicketClassifierService.classifyTicketNonBlocking(createdTicketId, {
+      // Fire non-blocking classification via pg-boss
+      const jobId = await TicketClassifierService.classifyTicketNonBlocking(createdTicketId, {
         apiKey,
       });
+      expect(jobId).not.toBeNull();
 
-      // Await background task completion
-      const res = await task;
-      expect(res).not.toBeNull();
-
-      const ticketInDb = await prisma.ticket.findUnique({ where: { id: createdTicketId } });
-      expect(ticketInDb?.category).toBe(TicketCategory.TECHNICAL_QUESTION);
+      // Wait up to 5 seconds for pg-boss worker to process the job
+      let classified = false;
+      for (let i = 0; i < 25; i++) {
+        await new Promise((r) => setTimeout(r, 200));
+        const ticketInDb = await prisma.ticket.findUnique({ where: { id: createdTicketId } });
+        if (ticketInDb?.category === TicketCategory.TECHNICAL_QUESTION) {
+          classified = true;
+          break;
+        }
+      }
+      expect(classified).toBe(true);
     }
   });
 });

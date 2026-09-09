@@ -3,6 +3,7 @@ import express from 'express';
 import { prisma } from '../../db/prisma.js';
 import ticketRoutes from '../ticket.routes.js';
 import { TicketStatus, Priority, TicketCategory } from '@prisma/client';
+import { QueueService } from '../../services/queue.service.js';
 
 describe('Ticket Routes & Logic Tests (GET /api/tickets)', () => {
   const createdTicketIds: string[] = [];
@@ -73,12 +74,13 @@ describe('Ticket Routes & Logic Tests (GET /api/tickets)', () => {
         where: { id: { in: createdTicketIds } },
       });
     }
+    await QueueService.stop();
   });
 
   test('GET /api/tickets rejects unauthenticated requests with 401', async () => {
     const res = await fetch(`${baseUrl}/api/tickets`);
     expect(res.status).toBe(401);
-    const data = await res.json();
+    const data = (await res.json()) as { error: string };
     expect(data.error).toContain('Unauthorized');
   });
 

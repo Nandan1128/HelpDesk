@@ -254,9 +254,9 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     });
 
     // If autoClassify is true and category or priority was not explicitly specified,
-    // trigger non-blocking Gemini AI classification in the background
+    // trigger background Gemini AI classification via pg-boss
     if (autoClassify && (!category || !priority)) {
-      TicketClassifierService.classifyTicketNonBlocking(newTicket.id);
+      await TicketClassifierService.enqueueClassification(newTicket.id);
     }
 
     return res.status(201).json({ ticket: newTicket });
@@ -447,11 +447,12 @@ router.post('/classify', requireAuth, async (req: AuthenticatedRequest, res: Res
 
     if (ticketId) {
       if (isAsync) {
-        TicketClassifierService.classifyTicketNonBlocking(ticketId);
+        const jobId = await TicketClassifierService.enqueueClassification(ticketId);
         return res.status(202).json({
           success: true,
-          message: 'Ticket classification queued in background',
+          message: 'Ticket classification queued in background via pg-boss',
           ticketId,
+          jobId,
         });
       }
 
@@ -837,12 +838,13 @@ router.post('/:id/classify', requireAuth, async (req: AuthenticatedRequest, res:
     }
 
     if (isAsync) {
-      // Trigger non-blocking classification
-      TicketClassifierService.classifyTicketNonBlocking(ticket.id);
+      // Trigger background classification via pg-boss
+      const jobId = await TicketClassifierService.enqueueClassification(ticket.id);
       return res.status(202).json({
         success: true,
-        message: 'Ticket classification queued in background',
+        message: 'Ticket classification queued in background via pg-boss',
         ticketId: ticket.id,
+        jobId,
       });
     }
 

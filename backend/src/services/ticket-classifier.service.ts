@@ -2,6 +2,7 @@ import { Ticket } from '@prisma/client';
 import { prisma } from '../db/prisma.js';
 import { env } from '../config/env.js';
 import { AIService, TicketClassificationResult } from './ai.service.js';
+import { QueueService } from './queue.service.js';
 
 export interface ClassifyTicketResult {
   ticket: Ticket;
@@ -93,32 +94,32 @@ export class TicketClassifierService {
   }
 
   /**
-   * Triggers ticket classification in a strictly non-blocking fashion.
-   * Defers execution via setImmediate so callers (such as inbound email webhooks)
-   * can return an immediate HTTP 200/201 response without waiting for Gemini.
-   * Internal errors are safely caught and logged, preventing unhandled promise rejections.
+   * Enqueues ticket classification using pg-boss background job queue.
+   * Returns the pg-boss job ID, or null if duplicate/error.
+   */
+  static async enqueueClassification(
+    ticketId: string,
+    options?: { apiKey?: string; modelName?: string }
+  ): Promise<string | null> {
+    return QueueService.enqueueTicketClassification(ticketId, options);
+  }
+
+  /**
+   * Triggers ticket classification in a non-blocking background queue via pg-boss.
+   * Safely catches and logs errors so callers can return immediately without unhandled rejections.
    */
   static classifyTicketNonBlocking(
     ticketId: string,
     options?: { apiKey?: string; modelName?: string }
-  ): Promise<ClassifyTicketResult | null> {
-    const task = (async () => {
-      // Yield execution to the next event-loop tick so the caller's response flushes first
-      await new Promise((resolve) => setImmediate(resolve));
-      try {
-        return await this.classifyTicket(ticketId, options);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error(
-          `[Ticket Classifier] Non-blocking classification error for ticket ${ticketId}:`,
-          message
-        );
-        return null;
-      }
-    })();
-
-    // Attach catch handler to ensure no unhandled promise rejection if caller does not await
-    task.catch(() => {});
-    return task;
+  ): Promise<string | null> {
+    return QueueService.enqueueTicketClassification(ticketId, options).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[Ticket Classifier] Non-blocking queueing error for ticket ${ticketId}:`,
+        message
+      );
+      return null;
+    });
   }
 }
+

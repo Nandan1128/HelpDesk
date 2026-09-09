@@ -1,10 +1,8 @@
 import { describe, test, expect, beforeEach, afterAll } from 'bun:test';
-import {
-  EmailIngestionService,
-  extractTicketNumberFromSubject,
-} from '../email-ingestion.service.js';
+import { EmailIngestionService } from '../email-ingestion.service.js';
 import { prisma } from '../../db/prisma.js';
 import { TicketStatus, SenderType } from '@prisma/client';
+import { QueueService } from '../queue.service.js';
 
 describe('EmailIngestionService - Unit & Integration Tests', () => {
   const createdTicketIds: string[] = [];
@@ -19,6 +17,7 @@ describe('EmailIngestionService - Unit & Integration Tests', () => {
         where: { id: { in: createdTicketIds } },
       });
     }
+    await QueueService.stop();
   });
 
   describe('Subject Parsing & Body Cleaning Helpers', () => {

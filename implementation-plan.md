@@ -42,6 +42,7 @@
 
 - [x] Set up Google Gemini API integration with Vercel AI SDK (`ai` & `@ai-sdk/google`)
 - [x] Implement auto-classification endpoint (categorize incoming tickets)
+- [x] Integrate pg-boss background job queue for reliable, asynchronous ticket classification
 - [ ] Implement AI summary endpoint (generate ticket summary)
 - [x] Implement AI Polish button to improve agent replies using Gemini API key
 - [ ] Implement AI suggested reply endpoint with RAG

@@ -209,8 +209,8 @@ export class EmailIngestionService {
       },
     });
 
-    // Automatically classify the new ticket using Gemini in a non-blocking fashion
-    TicketClassifierService.classifyTicketNonBlocking(newTicket.id);
+    // Automatically enqueue ticket classification using pg-boss in the background
+    await TicketClassifierService.enqueueClassification(newTicket.id);
 
     return {
       action: 'created_ticket',

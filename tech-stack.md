@@ -13,6 +13,7 @@ The system follows a decoupled Client-Server architecture:
 * **AI Engine:** **Google Gemini** for ticket classification, thread summarization, and RAG-grounded reply suggestions.
 * **Email Provider:** **SendGrid** or **Mailgun** (inbound webhook processing and outbound email dispatch).
 * **Authentication:** **Database-backed Sessions** stored in PostgreSQL.
+* **Background Job Queue:** **pg-boss** (PostgreSQL-backed job queue for asynchronous, reliable background processing such as AI ticket classification).
 * **Deployment & Containerization:** **Docker** and **Railway** (cloud hosting).
 
 ---
@@ -90,6 +91,14 @@ The system follows a decoupled Client-Server architecture:
 * **Rate Limiting Policy:**
   * Active **strictly in production** (`NODE_ENV === 'production'`).
   * Express API limiters and Better Auth authentication rate limits are bypassed during development and automated E2E testing to ensure fast, unblocked execution.
+
+### 2.9 Background Job Queue (pg-boss)
+* **Technology:** **pg-boss** (v12+) using PostgreSQL tables for job state persistence.
+* **Responsibilities:**
+  * **Asynchronous AI Ticket Classification:** Offloading Gemini API classification calls (`classify-ticket` queue) to worker threads so HTTP response times for ticket creation and inbound email ingestion remain instantaneous (<50ms).
+  * **Deduplication:** Utilizing `singletonKey` per ticket ID to avoid redundant classification runs when multiple inbound events arrive concurrently.
+  * **Resilience & Fault Tolerance:** Automatic retry with exponential backoff (`retryLimit: 3`, `retryDelay: 10s`, `retryBackoff: true`) and job timeouts (`expireInSeconds: 120s`).
+  * **Graceful Lifecycle:** Clean startup and shutdown integration tied to Express process signals (`SIGTERM`, `SIGINT`).
 
 ---
 
