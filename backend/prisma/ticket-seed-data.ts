@@ -192,8 +192,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
     priority: Priority.LOW,
     status: TicketStatus.RESOLVED,
     daysAgo: 3.0,
-    assignedAgentIndex: 0,
-    aiSummary: 'Customer requesting recent SOC 2 Type II audit report for internal vendor risk management assessment.',
+    assignedAgentIndex: null,
+    aiSummary: 'Auto-resolved by AI based on Knowledge Base: Customer directed to Trust Center portal for instant download of SOC 2 Type II compliance reports.',
     aiSuggestedReply: 'Hi Fatima, you can download our latest SOC 2 Type II and ISO 27001 reports directly from trust.ticketai.local under signed NDA.',
     messages: [
       {
@@ -201,9 +201,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
         body: 'Hello, our compliance officer requires TicketAI SOC 2 Type II certification for our annual third-party risk review. Where can we obtain a copy?',
       },
       {
-        senderType: SenderType.AGENT,
+        senderType: SenderType.SYSTEM,
         body: 'Hi Fatima,\n\nYou can access our complete compliance package, including SOC 2 Type II and HIPAA documentation, via our Trust Center: https://trust.ticketai.local. Let us know if you need any additional questionnaires completed.',
-        isAgentReply: true,
       },
     ],
   },
@@ -285,8 +284,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
     priority: Priority.LOW,
     status: TicketStatus.RESOLVED,
     daysAgo: 5.2,
-    assignedAgentIndex: 1,
-    aiSummary: 'Customer inquiring how to configure custom form inputs (e.g. order ID, browser version) on customer-facing ticket intake form.',
+    assignedAgentIndex: null,
+    aiSummary: 'Auto-resolved by AI based on Knowledge Base: Customer guided to Settings > Intake Forms > Custom Fields with documentation guide.',
     aiSuggestedReply: 'Hi Grace, custom ticket intake fields can be configured under Settings > Intake Forms > Custom Fields.',
     messages: [
       {
@@ -294,9 +293,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
         body: 'We would like our customers to submit their hardware model and firmware version when creating a ticket. How do we customize the form?',
       },
       {
-        senderType: SenderType.AGENT,
+        senderType: SenderType.SYSTEM,
         body: 'Hi Grace,\n\nYou can easily add custom text, dropdown, or numeric fields by navigating to Settings > Intake Forms. Here is a step-by-step guide: https://docs.ticketai.local/intake-forms/custom-fields.',
-        isAgentReply: true,
       },
     ],
   },
@@ -712,8 +710,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
     priority: Priority.LOW,
     status: TicketStatus.RESOLVED,
     daysAgo: 18.5,
-    assignedAgentIndex: 1,
-    aiSummary: 'Prospect inquiring about uptime SLA terms, service credits, and multiregion disaster recovery failover.',
+    assignedAgentIndex: null,
+    aiSummary: 'Auto-resolved by AI based on Knowledge Base: Enterprise uptime SLA terms (99.99%) and multi-region failover specifications provided.',
     aiSuggestedReply: 'Hi Anders, our Enterprise SLA guarantees 99.99% monthly uptime with financial service credits provided if availability drops below target.',
     messages: [
       {
@@ -721,9 +719,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
         body: 'Before signing our Enterprise master services agreement, we need details on your standard uptime Service Level Agreement and penalty credits.',
       },
       {
-        senderType: SenderType.AGENT,
+        senderType: SenderType.SYSTEM,
         body: 'Hi Anders,\n\nOur Enterprise tier features a 99.99% monthly uptime SLA backed by automated multi-region active-passive failover across AWS us-east-1 and us-west-2. I have attached our full SLA agreement PDF.',
-        isAgentReply: true,
       },
     ],
   },
@@ -1108,8 +1105,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
     priority: Priority.MEDIUM,
     status: TicketStatus.RESOLVED,
     daysAgo: 32.5,
-    assignedAgentIndex: 0,
-    aiSummary: 'Customer asking how to configure scoped API tokens with tickets:read and metrics:read permissions only.',
+    assignedAgentIndex: null,
+    aiSummary: 'Auto-resolved by AI based on Knowledge Base: Customer guided to Settings > Developers > API Keys to generate scoped read-only tokens.',
     aiSuggestedReply: 'Hi Larry, you can create restricted API keys with custom scopes in Settings > Developers > API Keys > New Scoped Token.',
     messages: [
       {
@@ -1117,9 +1114,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
         body: 'We are building a PowerBI executive dashboard and need an API key that only has read permissions and cannot modify or delete any tickets.',
       },
       {
-        senderType: SenderType.AGENT,
+        senderType: SenderType.SYSTEM,
         body: 'Hi Larry,\n\nUnder Settings > Developers > API Keys, click "Generate Token" and select only the `read:tickets` and `read:metrics` checkboxes. This token cannot perform write or delete operations.',
-        isAgentReply: true,
       },
     ],
   },
@@ -1370,8 +1366,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
     priority: Priority.MEDIUM,
     status: TicketStatus.RESOLVED,
     daysAgo: 41.8,
-    assignedAgentIndex: 1,
-    aiSummary: 'Customer inquiring about OAuth2 authentication and Exchange Web Services connector for Microsoft 365 shared mailboxes.',
+    assignedAgentIndex: null,
+    aiSummary: 'Auto-resolved by AI based on Knowledge Base: Modern OAuth2 authentication instructions for Microsoft 365 Exchange Online provided.',
     aiSuggestedReply: 'Hi Bill, yes, TicketAI supports modern OAuth2 authentication for Microsoft 365 Exchange Online without needing legacy basic authentication.',
     messages: [
       {
@@ -1379,9 +1375,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
         body: 'Our organization is migrating from IMAP to Microsoft 365 Exchange Online with basic authentication disabled. Does TicketAI support modern OAuth2 app permissions?',
       },
       {
-        senderType: SenderType.AGENT,
+        senderType: SenderType.SYSTEM,
         body: 'Hi Bill,\n\nYes! Under Settings > Email Ingestion, choose "Microsoft 365" and authenticate via Azure AD with the Mail.ReadWrite application permission. No app passwords required.',
-        isAgentReply: true,
       },
     ],
   },
@@ -1393,8 +1388,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
     priority: Priority.MEDIUM,
     status: TicketStatus.CLOSED,
     daysAgo: 42.6,
-    assignedAgentIndex: 0,
-    aiSummary: 'Customer invoked 30-day money back guarantee on day 22. Full refund of $1,800 processed.',
+    assignedAgentIndex: null,
+    aiSummary: 'Auto-resolved by AI based on Knowledge Base: Customer invoked 30-day satisfaction guarantee within policy window; full $1,800 refund processed.',
     aiSuggestedReply: 'Hi John, your refund under our 30-day satisfaction guarantee has been approved and $1,800.00 returned to your card.',
     messages: [
       {
@@ -1402,9 +1397,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
         body: 'We purchased the annual team plan on Feb 12th. Unfortunately our requirements shifted and we will not be deploying. We are requesting a refund under your 30-day guarantee.',
       },
       {
-        senderType: SenderType.AGENT,
-        body: 'Hi John,\n\nWe are sorry to see you go! As you are well within our 30-day guarantee period, I have processed a full refund of $1,800.00. Thank you for giving us a try.',
-        isAgentReply: true,
+        senderType: SenderType.SYSTEM,
+        body: 'Hi John,\n\nAs your request is within our 30-day money-back satisfaction window, your cancellation has been processed and a full refund of $1,800.00 has been submitted to your original payment card.',
       },
     ],
   },
@@ -1549,8 +1543,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
     priority: Priority.LOW,
     status: TicketStatus.RESOLVED,
     daysAgo: 48.0,
-    assignedAgentIndex: 1,
-    aiSummary: 'Customer added seat for contractor who never accepted invitation. Removed seat and issued $120 refund.',
+    assignedAgentIndex: null,
+    aiSummary: 'Auto-resolved by AI based on Knowledge Base: Unactivated contractor seat removed and $120.00 refund processed automatically.',
     aiSuggestedReply: 'Hi Donald, I have cancelled the pending invitation, removed the extra seat, and refunded the $120.00 fee.',
     messages: [
       {
@@ -1558,9 +1552,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
         body: 'We added an additional agent seat last week for a contractor who decided not to join our project. The seat was never activated. Could you please refund?',
       },
       {
-        senderType: SenderType.AGENT,
-        body: 'Hi Donald,\n\nI verified the invitation was never accepted. The seat has been removed and $120.00 refunded to your card.',
-        isAgentReply: true,
+        senderType: SenderType.SYSTEM,
+        body: 'Hi Donald,\n\nWe verified that the invitation was never activated. The unused seat has been removed from your workspace and a full $120.00 refund has been issued to your payment card.',
       },
     ],
   },
@@ -1572,8 +1565,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
     priority: Priority.LOW,
     status: TicketStatus.CLOSED,
     daysAgo: 48.8,
-    assignedAgentIndex: 0,
-    aiSummary: 'Customer inquiring how to add their billing department email address to automated invoice receipts.',
+    assignedAgentIndex: null,
+    aiSummary: 'Auto-resolved by AI based on Knowledge Base: Customer guided to Settings > Billing to configure automated invoice email recipients.',
     aiSuggestedReply: 'Hi Edgar, you can add additional invoice notification recipients under Settings > Billing > Invoice Recipients.',
     messages: [
       {
@@ -1581,9 +1574,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
         body: 'Can invoice receipts be automatically emailed to accounting@relational.org on the 1st of each month in addition to my primary email?',
       },
       {
-        senderType: SenderType.AGENT,
-        body: 'Hi Edgar,\n\nYes! Go to Settings > Billing > Billing Information and add accounting@relational.org into the "Additional Invoice Recipients" field.',
-        isAgentReply: true,
+        senderType: SenderType.SYSTEM,
+        body: 'Hi Edgar,\n\nYes! Go to Settings > Billing > Billing Information and add accounting@relational.org into the "Additional Invoice Recipients" field. Invoices are generated on the 1st of each month and will automatically copy that address.',
       },
     ],
   },
@@ -1893,8 +1885,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
     priority: Priority.LOW,
     status: TicketStatus.RESOLVED,
     daysAgo: 60.7,
-    assignedAgentIndex: 0,
-    aiSummary: 'Customer requesting third-party verified uptime data for past 12 months for compliance records.',
+    assignedAgentIndex: null,
+    aiSummary: 'Auto-resolved by AI based on Knowledge Base: Customer directed to independent Statuspage history portal for verified SLA compliance reports.',
     aiSuggestedReply: 'Hi Grace, our independent Statuspage uptime reports and incident history are publicly accessible at status.ticketai.local/history.',
     messages: [
       {
@@ -1902,9 +1894,8 @@ export const REAL_LIFE_TICKETS: SeedTicket[] = [
         body: 'Where can our IT auditor view third-party verified uptime percentages and incident post-mortems for the 2025 calendar year?',
       },
       {
-        senderType: SenderType.AGENT,
+        senderType: SenderType.SYSTEM,
         body: 'Hi Grace,\n\nYou can access our historical uptime data, system status, and incident root cause analyses directly at https://status.ticketai.local/history.',
-        isAgentReply: true,
       },
     ],
   },

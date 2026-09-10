@@ -96,7 +96,10 @@ export function UsersPage() {
         params,
       });
 
-      setUsers(response.data.users || []);
+      const fetchedUsers = (response.data.users || []).filter(
+        (u) => !(u.name === 'AI' && u.role === 'AGENT') && u.email !== 'ai@ticketai.local'
+      );
+      setUsers(fetchedUsers);
     } catch (err: any) {
       const message =
         err?.response?.data?.error ||

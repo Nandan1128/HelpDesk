@@ -13,6 +13,7 @@
     "db:migrate": "bun x prisma migrate dev",
     "db:generate": "bun x prisma generate",
     "db:seed": "bun prisma/seed.ts",
+    "seed:ai": "bun prisma/seed-ai-agent.ts",
     "db:studio": "bun x prisma studio",
     "db:push": "bun x prisma db push",
     "db:test:setup": "bun scripts/setup-test-db.ts",

@@ -10,6 +10,11 @@ const router = Router();
 // Apply auth and admin check to all user routes
 router.use(requireAuth, requireRole('ADMIN'));
 
+function isAiAgentUser(user: { email: string; name: string; role: Role }): boolean {
+  const aiEmail = (process.env.AI_AGENT_EMAIL || 'ai@ticketai.local').toLowerCase().trim();
+  return user.email.toLowerCase() === aiEmail || (user.name === 'AI' && user.role === Role.AGENT);
+}
+
 const createUserSchema = z.object({
   name: z
     .string({ required_error: 'Name is required' })
@@ -61,6 +66,11 @@ router.post('/', async (req: AuthenticatedRequest, res: Response) => {
 
   const { name, email, password, role } = parseResult.data;
   const normalizedEmail = email.toLowerCase().trim();
+
+  const aiEmail = (process.env.AI_AGENT_EMAIL || 'ai@ticketai.local').toLowerCase().trim();
+  if (normalizedEmail === aiEmail || (name.trim().toUpperCase() === 'AI' && role === 'AGENT')) {
+    return res.status(400).json({ error: 'The AI agent identifier is reserved for system automation' });
+  }
 
   // Check if user with this email already exists
   const existingUser = await prisma.user.findUnique({
@@ -144,9 +154,14 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 50));
     const skip = (pageNum - 1) * limitNum;
+    const aiEmail = (process.env.AI_AGENT_EMAIL || 'ai@ticketai.local').toLowerCase().trim();
 
     const where: Prisma.UserWhereInput = {
       deletedAt: null,
+      NOT: [
+        { email: aiEmail },
+        { name: 'AI', role: Role.AGENT },
+      ],
     };
 
     if (searchTerm) {
@@ -245,7 +260,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
       },
     });
 
-    if (!user || user.deletedAt !== null) {
+    if (!user || user.deletedAt !== null || isAiAgentUser(user)) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -274,7 +289,7 @@ const handleUpdateUser = async (req: AuthenticatedRequest, res: Response) => {
     where: { id },
   });
 
-  if (!existingUser || existingUser.deletedAt !== null) {
+  if (!existingUser || existingUser.deletedAt !== null || isAiAgentUser(existingUser)) {
     return res.status(404).json({ error: 'User not found' });
   }
 
@@ -377,7 +392,7 @@ router.delete('/:id', async (req: AuthenticatedRequest, res: Response) => {
     where: { id },
   });
 
-  if (!existingUser || existingUser.deletedAt !== null) {
+  if (!existingUser || existingUser.deletedAt !== null || isAiAgentUser(existingUser)) {
     return res.status(404).json({ error: 'User not found' });
   }
 

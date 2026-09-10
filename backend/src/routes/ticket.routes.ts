@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { Prisma, TicketStatus, TicketCategory, Priority, SenderType } from '@prisma/client';
+import { Prisma, Role, TicketStatus, TicketCategory, Priority, SenderType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../db/prisma.js';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
@@ -212,13 +212,18 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       autoClassify,
     } = parseResult.data;
 
-    if (assignedToId) {
+    let finalAssignedToId = assignedToId;
+    if (finalAssignedToId) {
       const agent = await prisma.user.findFirst({
-        where: { id: assignedToId, deletedAt: null },
+        where: { id: finalAssignedToId, deletedAt: null },
       });
       if (!agent) {
         return res.status(400).json({ error: 'Assigned agent not found or inactive' });
       }
+    } else if (finalAssignedToId === undefined || status === TicketStatus.NEW) {
+      // When a new ticket arrives without explicit assignment, assign it to the AI agent for auto-resolutions
+      const aiAgent = await AutoResolveService.getOrCreateAiAgent();
+      finalAssignedToId = aiAgent.id;
     }
 
     const newTicket = await prisma.ticket.create({
@@ -229,7 +234,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
         status,
         category: category || TicketCategory.GENERAL_QUESTION,
         priority: priority || Priority.MEDIUM,
-        assignedToId,
+        assignedToId: finalAssignedToId,
         ...(body
           ? {
               messages: {
@@ -257,9 +262,9 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       },
     });
 
-    // If autoClassify is true and category or priority was not explicitly specified,
-    // trigger background Gemini AI classification via pg-boss
-    if (autoClassify && (!category || !priority)) {
+    // If status is NEW or autoClassify is true and category or priority was not explicitly specified,
+    // trigger background Gemini AI processing/classification via pg-boss
+    if (status === TicketStatus.NEW || (autoClassify && (!category || !priority))) {
       await TicketClassifierService.enqueueClassification(newTicket.id);
     }
 
@@ -277,10 +282,15 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
  */
 router.get('/agents', requireAuth, async (_req: AuthenticatedRequest, res: Response) => {
   try {
+    const aiEmail = (process.env.AI_AGENT_EMAIL || 'ai@ticketai.local').toLowerCase().trim();
     const agents = await prisma.user.findMany({
       where: {
         isActive: true,
         deletedAt: null,
+        NOT: [
+          { email: aiEmail },
+          { name: 'AI', role: Role.AGENT },
+        ],
       },
       select: {
         id: true,
@@ -297,6 +307,251 @@ router.get('/agents', requireAuth, async (_req: AuthenticatedRequest, res: Respo
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch agents';
     console.error('[Agents List Error]:', error);
+    return res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * Helper to format duration in milliseconds to human-readable string.
+ */
+export function formatResolutionDuration(ms: number): string {
+  if (ms <= 0) return '0m';
+  const totalMinutes = Math.round(ms / (1000 * 60));
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours < 24) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
+}
+
+/**
+ * GET /api/tickets/dashboard
+ * Aggregates support operations metrics, resolution statistics,
+ * category distribution, and recent activity.
+ */
+router.get('/dashboard', requireAuth, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const past30DaysStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 29, 0, 0, 0, 0));
+
+    const [statusGroups, categoryGroups, totalTickets, aiResolvedTicketsCount, resolvedTickets, ticketsPast30Days] = await Promise.all([
+      prisma.ticket.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      prisma.ticket.groupBy({
+        by: ['category'],
+        _count: { _all: true },
+      }),
+      prisma.ticket.count(),
+      prisma.ticket.count({
+        where: {
+          status: { in: [TicketStatus.RESOLVED, TicketStatus.CLOSED] },
+          OR: [
+            { messages: { some: { senderType: SenderType.SYSTEM } } },
+            { aiSummary: { contains: 'Auto-resolved' } },
+          ],
+        },
+      }),
+      prisma.ticket.findMany({
+        where: {
+          status: { in: [TicketStatus.RESOLVED, TicketStatus.CLOSED] },
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          aiSummary: true,
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: {
+              createdAt: true,
+              senderType: true,
+            },
+          },
+        },
+      }),
+      prisma.ticket.findMany({
+        where: {
+          createdAt: {
+            gte: past30DaysStart,
+          },
+        },
+        select: {
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    // Build status breakdown
+    const statusCounts = statusGroups.reduce<Record<string, number>>((acc, curr) => {
+      acc[curr.status] = curr._count._all;
+      return acc;
+    }, {});
+
+    const openTickets = statusCounts[TicketStatus.OPEN] || 0;
+    const resolvedTicketsCount = statusCounts[TicketStatus.RESOLVED] || 0;
+    const closedTicketsCount = statusCounts[TicketStatus.CLOSED] || 0;
+    const newTicketsCount = statusCounts[TicketStatus.NEW] || 0;
+    const processingTicketsCount = statusCounts[TicketStatus.PROCESSING] || 0;
+    const totalResolvedAndClosed = resolvedTicketsCount + closedTicketsCount;
+
+    // Calculate Average Resolution Time
+    let totalResolutionMs = 0;
+    let aiResolutionMs = 0;
+    let aiCount = 0;
+    let humanResolutionMs = 0;
+    let humanCount = 0;
+
+    for (const t of resolvedTickets) {
+      const resolvedTime = t.messages[0]?.createdAt || t.updatedAt;
+      const duration = Math.max(0, new Date(resolvedTime).getTime() - new Date(t.createdAt).getTime());
+      totalResolutionMs += duration;
+
+      const isAi =
+        t.messages[0]?.senderType === SenderType.SYSTEM ||
+        (t.aiSummary?.includes('Auto-resolved') ?? false);
+
+      if (isAi) {
+        aiResolutionMs += duration;
+        aiCount++;
+      } else {
+        humanResolutionMs += duration;
+        humanCount++;
+      }
+    }
+
+    const avgResolutionTimeMs =
+      resolvedTickets.length > 0 ? Math.round(totalResolutionMs / resolvedTickets.length) : 0;
+    const aiAvgResolutionTimeMs =
+      aiCount > 0 ? Math.round(aiResolutionMs / aiCount) : 0;
+    const humanAvgResolutionTimeMs =
+      humanCount > 0 ? Math.round(humanResolutionMs / humanCount) : 0;
+
+    // Calculate % of tickets resolved by AI
+    const aiResolvedPercentage =
+      totalTickets > 0 ? Number(((aiResolvedTicketsCount / totalTickets) * 100).toFixed(1)) : 0;
+    const aiResolvedRateOfResolved =
+      totalResolvedAndClosed > 0
+        ? Number(((aiResolvedTicketsCount / totalResolvedAndClosed) * 100).toFixed(1))
+        : 0;
+
+    // Category breakdown
+    const categoryCounts = categoryGroups.reduce<Record<string, number>>((acc, curr) => {
+      acc[curr.category] = curr._count._all;
+      return acc;
+    }, {});
+
+    const allCategories = [
+      TicketCategory.GENERAL_QUESTION,
+      TicketCategory.TECHNICAL_QUESTION,
+      TicketCategory.REFUND_REQUEST,
+    ];
+
+    const categoryBreakdown = allCategories.map((cat) => {
+      const count = categoryCounts[cat] || 0;
+      const percentage =
+        totalTickets > 0 ? Number(((count / totalTickets) * 100).toFixed(1)) : 0;
+      return {
+        category: cat,
+        count,
+        percentage,
+      };
+    });
+
+    // 5 Recent Tickets
+    const recentTicketsRaw = await prisma.ticket.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        ticketNumber: true,
+        subject: true,
+        customerName: true,
+        customerEmail: true,
+        status: true,
+        category: true,
+        priority: true,
+        aiSummary: true,
+        createdAt: true,
+        updatedAt: true,
+        messages: {
+          where: { senderType: SenderType.SYSTEM },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+
+    const recentTickets = recentTicketsRaw.map((t) => ({
+      id: t.id,
+      ticketNumber: t.ticketNumber,
+      subject: t.subject,
+      customerName: t.customerName,
+      customerEmail: t.customerEmail,
+      status: t.status,
+      category: t.category,
+      priority: t.priority,
+      autoResolved: t.messages.length > 0 || (t.aiSummary?.includes('Auto-resolved') ?? false),
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+    }));
+
+    // 30-day ticket counts aggregation (past 30 days chronologically)
+    const dateCounts = new Map<string, number>();
+    for (const t of ticketsPast30Days) {
+      const dateKey = new Date(t.createdAt).toISOString().split('T')[0];
+      dateCounts.set(dateKey, (dateCounts.get(dateKey) || 0) + 1);
+    }
+
+    const ticketsPerDay: Array<{ date: string; formattedDate: string; count: number }> = [];
+    for (let i = 29; i >= 0; i--) {
+      const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i, 0, 0, 0, 0));
+      const dateKey = day.toISOString().split('T')[0];
+      const count = dateCounts.get(dateKey) || 0;
+      const formattedDate = day.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      });
+      ticketsPerDay.push({
+        date: dateKey,
+        formattedDate,
+        count,
+      });
+    }
+
+    return res.json({
+      metrics: {
+        totalTickets,
+        openTickets,
+        resolvedTickets: resolvedTicketsCount,
+        closedTickets: closedTicketsCount,
+        newTickets: newTicketsCount,
+        processingTickets: processingTicketsCount,
+        aiResolvedTickets: aiResolvedTicketsCount,
+        aiResolvedPercentage,
+        aiResolvedRateOfResolved,
+        averageResolutionTimeMs: avgResolutionTimeMs,
+        averageResolutionTimeFormatted: formatResolutionDuration(avgResolutionTimeMs),
+        aiAverageResolutionTimeMs: aiAvgResolutionTimeMs,
+        aiAverageResolutionTimeFormatted: formatResolutionDuration(aiAvgResolutionTimeMs),
+        humanAverageResolutionTimeMs: humanAvgResolutionTimeMs,
+        humanAverageResolutionTimeFormatted: formatResolutionDuration(humanAvgResolutionTimeMs),
+      },
+      categoryBreakdown,
+      recentTickets,
+      ticketsPerDay,
+      dailyTickets: ticketsPerDay,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch dashboard metrics';
+    console.error('[Dashboard Metrics Error]:', error);
     return res.status(500).json({ error: message });
   }
 });

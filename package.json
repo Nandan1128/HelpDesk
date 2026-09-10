@@ -14,6 +14,7 @@
     "db:migrate": "cd backend && bun run db:migrate",
     "db:generate": "cd backend && bun run db:generate",
     "db:seed": "cd backend && bun run db:seed",
+    "db:seed:ai": "cd backend && bun run seed:ai",
     "db:studio": "cd backend && bun run db:studio",
     "db:test:setup": "cd backend && bun run db:test:setup",
     "db:test:reset": "cd backend && bun run db:test:reset",

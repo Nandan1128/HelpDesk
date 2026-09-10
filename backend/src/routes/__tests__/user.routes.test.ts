@@ -164,4 +164,62 @@ describe('User Routes & Logic Tests (DELETE /api/users/:id)', () => {
     const data = (await res.json()) as any;
     expect(data.error).toContain('User not found');
   });
+
+  test('GET /api/users excludes the AI agent from the user list', async () => {
+    // Ensure AI agent exists in DB
+    const aiEmail = (process.env.AI_AGENT_EMAIL || 'ai@ticketai.local').toLowerCase().trim();
+    let aiUser = await prisma.user.findFirst({
+      where: { email: aiEmail },
+    });
+    if (!aiUser) {
+      aiUser = await prisma.user.create({
+        data: {
+          name: 'AI',
+          email: aiEmail,
+          role: Role.AGENT,
+          isActive: true,
+          emailVerified: true,
+        },
+      });
+      createdUserIds.push(aiUser.id);
+    }
+
+    const res = await fetch(`${baseUrl}/api/users`, {
+      headers: authHeaders,
+    });
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as { users: Array<{ email: string; name: string }> };
+    const foundAi = data.users.find(
+      (u) => u.email.toLowerCase() === aiEmail || (u.name === 'AI')
+    );
+    expect(foundAi).toBeUndefined();
+  });
+
+  test('GET /api/users/:id returns 404 for the AI agent account', async () => {
+    const aiEmail = (process.env.AI_AGENT_EMAIL || 'ai@ticketai.local').toLowerCase().trim();
+    const aiUser = await prisma.user.findFirst({
+      where: { email: aiEmail },
+    });
+    if (aiUser) {
+      const res = await fetch(`${baseUrl}/api/users/${aiUser.id}`, {
+        headers: authHeaders,
+      });
+      expect(res.status).toBe(404);
+    }
+  });
+
+  test('DELETE /api/users/:id returns 404 when attempting to delete the AI agent account', async () => {
+    const aiEmail = (process.env.AI_AGENT_EMAIL || 'ai@ticketai.local').toLowerCase().trim();
+    const aiUser = await prisma.user.findFirst({
+      where: { email: aiEmail },
+    });
+    if (aiUser) {
+      const res = await fetch(`${baseUrl}/api/users/${aiUser.id}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+      expect(res.status).toBe(404);
+    }
+  });
 });

@@ -103,6 +103,8 @@ describe('EmailIngestionService - Unit & Integration Tests', () => {
       expect(result.ticket.customerName).toBe('Test Customer');
       expect(result.ticket.status).toBe(TicketStatus.NEW);
       expect(result.ticket.ticketNumber).toBeGreaterThan(0);
+      expect(result.ticket.assignedToId).toBeDefined();
+      expect(result.ticket.assignedToId).not.toBeNull();
 
       // Check initial message
       expect(result.message.ticketId).toBe(result.ticket.id);

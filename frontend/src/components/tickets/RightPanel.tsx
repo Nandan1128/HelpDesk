@@ -174,6 +174,11 @@ export function RightPanel({
               className="w-full h-9 px-3 text-xs bg-muted/40 border border-border rounded-lg text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer"
             >
               <option value="">Unassigned</option>
+              {ticket.assignedTo && !agents.some((a) => a.id === ticket.assignedTo?.id) && (
+                <option value={ticket.assignedTo.id}>
+                  {ticket.assignedTo.name} ({ticket.assignedTo.email})
+                </option>
+              )}
               {agents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.name} ({agent.email})

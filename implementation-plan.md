@@ -59,10 +59,11 @@
 
 ## Phase 7: Dashboard
 
-- [ ] Create dashboard page with ticket overview stats (open, resolved, closed counts)
-- [ ] Add tickets by category breakdown
-- [ ] Add recent tickets list
-- [ ] Add quick filters to navigate to filtered ticket list
+- [x] Create dashboard page with ticket overview stats (open, resolved, closed counts)
+- [x] Add tickets by category breakdown
+- [x] Add recent tickets list
+- [x] Add quick filters to navigate to filtered ticket list
+- [x] Add bar chart showing total tickets per day over past 30 days
 
 ## Phase 8: Polish & Deployment
 

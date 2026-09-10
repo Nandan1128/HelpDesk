@@ -118,7 +118,18 @@ async function main() {
     isActive: false,
   });
 
-  console.log(`✅ Created Support Agents: ${agentExample.email}, ${agent1.email}, ${agent2.email} (inactive)`);
+  const aiEmail = process.env.AI_AGENT_EMAIL || 'ai@ticketai.local';
+  const aiAgent = await prisma.user.create({
+    data: {
+      email: aiEmail,
+      name: 'AI',
+      role: Role.AGENT,
+      isActive: true,
+      emailVerified: true,
+    },
+  });
+
+  console.log(`✅ Created Support Agents: ${agentExample.email}, ${agent1.email}, ${agent2.email} (inactive), ${aiAgent.email} (AI - system agent, no password)`);
 
   // 4. Seed Knowledge Base Articles
   const kbRefund = await prisma.knowledgeBaseArticle.create({
@@ -164,14 +175,31 @@ async function main() {
   for (let i = 0; i < REAL_LIFE_TICKETS.length; i++) {
     const seed = REAL_LIFE_TICKETS[i];
     // Calculate staggered createdAt from daysAgo, plus a few minutes jitter based on index
-    const createdAt = new Date(now - seed.daysAgo * 24 * 60 * 60 * 1000 - i * 180 * 1000);
-    const assignedAgent = seed.assignedAgentIndex !== null ? agents[seed.assignedAgentIndex] : null;
+    const isAiAutoResolved =
+      (seed.aiSummary?.includes('Auto-resolved') ?? false) ||
+      seed.messages.some((m) => m.senderType === SenderType.SYSTEM);
+    const assignedAgent = isAiAutoResolved
+      ? aiAgent
+      : seed.assignedAgentIndex !== null
+      ? agents[seed.assignedAgentIndex]
+      : null;
 
     const messagesCreate = seed.messages.map((m, msgIdx) => {
       const isAgent = m.senderType === SenderType.AGENT;
-      const senderEmail = isAgent ? (assignedAgent?.email || agent1.email) : seed.customerEmail;
-      const senderName = isAgent ? (assignedAgent?.name || agent1.name) : seed.customerName;
-      const msgCreatedAt = new Date(createdAt.getTime() + (msgIdx + 1) * 20 * 60 * 1000);
+      const isSystem = m.senderType === SenderType.SYSTEM;
+      const senderEmail = isSystem
+        ? (process.env.SUPPORT_EMAIL || 'support@ticketai.local')
+        : isAgent
+        ? (assignedAgent?.email || agent1.email)
+        : seed.customerEmail;
+      const senderName = isSystem
+        ? 'TicketAI Support'
+        : isAgent
+        ? (assignedAgent?.name || agent1.name)
+        : seed.customerName;
+      // AI auto-resolution replies happen in 2 minutes, whereas human agent replies take 20 minutes per message
+      const delayMinutes = isSystem ? (msgIdx + 1) * 2 : (msgIdx + 1) * 20;
+      const msgCreatedAt = new Date(createdAt.getTime() + delayMinutes * 60 * 1000);
 
       return {
         senderType: m.senderType,
@@ -181,6 +209,13 @@ async function main() {
         createdAt: msgCreatedAt,
       };
     });
+
+    const lastMsgCreatedAt =
+      messagesCreate.length > 0 ? messagesCreate[messagesCreate.length - 1].createdAt : createdAt;
+    const updatedAt =
+      seed.status === TicketStatus.RESOLVED || seed.status === TicketStatus.CLOSED
+        ? lastMsgCreatedAt
+        : createdAt;
 
     await prisma.ticket.create({
       data: {
@@ -194,7 +229,7 @@ async function main() {
         aiSummary: seed.aiSummary,
         aiSuggestedReply: seed.aiSuggestedReply,
         createdAt,
-        updatedAt: createdAt,
+        updatedAt,
         messages: {
           create: messagesCreate,
         },

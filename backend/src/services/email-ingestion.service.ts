@@ -10,6 +10,7 @@ import {
 import { prisma } from '../db/prisma.js';
 import { env } from '../config/env.js';
 import { TicketClassifierService } from './ticket-classifier.service.js';
+import { AutoResolveService } from './auto-resolve.service.js';
 
 export const inboundEmailSchema = z
   .object({
@@ -182,7 +183,9 @@ export class EmailIngestionService {
       };
     }
 
-    // Branch B: Create brand new ticket with first customer message
+    // Branch B: Create brand new ticket with first customer message assigned to AI agent
+    const aiAgent = await AutoResolveService.getOrCreateAiAgent();
+
     const newTicket = await prisma.ticket.create({
       data: {
         subject: data.subject.trim(),
@@ -191,6 +194,7 @@ export class EmailIngestionService {
         status: TicketStatus.NEW,
         category: TicketCategory.GENERAL_QUESTION,
         priority: Priority.MEDIUM,
+        assignedToId: aiAgent.id,
         messages: {
           create: [
             {
@@ -206,6 +210,9 @@ export class EmailIngestionService {
       },
       include: {
         messages: true,
+        assignedTo: {
+          select: { id: true, name: true, email: true },
+        },
       },
     });
 

@@ -60,10 +60,12 @@ describe('AutoResolveService Tests', () => {
     expect(result).not.toBeNull();
     expect(result?.autoResolved).toBe(false);
     expect(result?.ticket.status).toBe(TicketStatus.OPEN);
+    expect(result?.ticket.assignedToId).toBeNull();
 
-    // Verify in database: ticket must be OPEN, not stuck in NEW or PROCESSING
+    // Verify in database: ticket must be OPEN and unassigned from AI agent
     const dbTicket = await prisma.ticket.findUnique({ where: { id: ticket.id } });
     expect(dbTicket?.status).toBe(TicketStatus.OPEN);
+    expect(dbTicket?.assignedToId).toBeNull();
   });
 
   test('state machine: auto-resolves ticket, transitions to RESOLVED, and appends SYSTEM message', async () => {
@@ -106,10 +108,17 @@ describe('AutoResolveService Tests', () => {
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
 
+    const aiAgent = await AutoResolveService.getOrCreateAiAgent();
     expect(result).not.toBeNull();
     expect(result?.autoResolved).toBe(true);
     expect(result?.ticket.status).toBe(TicketStatus.RESOLVED);
     expect(result?.ticket.category).toBe(TicketCategory.GENERAL_QUESTION);
+    expect(result?.ticket.assignedToId).toBe(aiAgent.id);
+
+    // Verify in database: ticket must be RESOLVED and assigned to AI agent
+    const dbTicket = await prisma.ticket.findUnique({ where: { id: ticket.id } });
+    expect(dbTicket?.status).toBe(TicketStatus.RESOLVED);
+    expect(dbTicket?.assignedToId).toBe(aiAgent.id);
 
     // Verify SYSTEM reply message was created in DB
     const messages = await prisma.message.findMany({
@@ -168,6 +177,12 @@ describe('AutoResolveService Tests', () => {
     expect(result?.ticket.status).toBe(TicketStatus.OPEN);
     expect(result?.ticket.category).toBe(TicketCategory.REFUND_REQUEST);
     expect(result?.ticket.priority).toBe(Priority.URGENT);
+    expect(result?.ticket.assignedToId).toBeNull();
+
+    // Verify in database: ticket must be OPEN and unassigned from AI agent
+    const dbTicket = await prisma.ticket.findUnique({ where: { id: ticket.id } });
+    expect(dbTicket?.status).toBe(TicketStatus.OPEN);
+    expect(dbTicket?.assignedToId).toBeNull();
 
     // Verify NO system resolution message was added
     const messages = await prisma.message.findMany({
@@ -214,9 +229,19 @@ describe('AutoResolveService Tests', () => {
     expect(result).not.toBeNull();
     expect(result?.autoResolved).toBe(false);
     expect(result?.ticket.status).toBe(TicketStatus.OPEN);
+    expect(result?.ticket.assignedToId).toBeNull();
 
-    // Verify ticket in DB is not stuck in PROCESSING
+    // Verify ticket in DB is not stuck in PROCESSING and unassigned from AI agent
     const dbTicket = await prisma.ticket.findUnique({ where: { id: ticket.id } });
     expect(dbTicket?.status).toBe(TicketStatus.OPEN);
+    expect(dbTicket?.assignedToId).toBeNull();
+  });
+
+  test('getOrCreateAiAgent creates and returns the dedicated AI Agent', async () => {
+    const aiAgent = await AutoResolveService.getOrCreateAiAgent();
+    expect(aiAgent).toBeDefined();
+    expect(aiAgent.name).toBe('AI');
+    expect(aiAgent.role).toBe('AGENT');
+    expect(aiAgent.isActive).toBe(true);
   });
 });

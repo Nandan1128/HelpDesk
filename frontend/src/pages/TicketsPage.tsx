@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SortingState } from '@tanstack/react-table';
 import { api } from '@/lib/api';
 import {
@@ -53,6 +53,8 @@ interface TicketListResponse {
 
 export function TicketsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [metrics, setMetrics] = useState<TicketMetrics>({
     total: 0,
@@ -74,10 +76,26 @@ export function TicketsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Filter & Search states
+  const initialStatusParam = searchParams.get('status');
+  const validInitialStatus =
+    initialStatusParam && ['OPEN', 'RESOLVED', 'CLOSED'].includes(initialStatusParam)
+      ? (initialStatusParam as TicketStatus)
+      : 'ALL';
+
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | TicketStatus>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | TicketStatus>(validInitialStatus);
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | Priority>('ALL');
+
+  const handleStatusFilterChange = (status: 'ALL' | TicketStatus) => {
+    setStatusFilter(status);
+    if (status === 'ALL') {
+      searchParams.delete('status');
+    } else {
+      searchParams.set('status', status);
+    }
+    setSearchParams(searchParams);
+  };
 
   // Sorting state: Defaults to newest first (createdAt: desc) using TanStack Table SortingState
   const [sorting, setSorting] = useState<SortingState>([
@@ -163,6 +181,8 @@ export function TicketsPage() {
     setStatusFilter('ALL');
     setPriorityFilter('ALL');
     setSorting([{ id: 'createdAt', desc: true }]);
+    searchParams.delete('status');
+    setSearchParams(searchParams);
   };
 
   const isFiltered = useMemo(() => {
@@ -309,7 +329,7 @@ export function TicketsPage() {
                 <button
                   key={status}
                   type="button"
-                  onClick={() => setStatusFilter(status)}
+                  onClick={() => handleStatusFilterChange(status)}
                   className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     statusFilter === status
                       ? 'bg-background text-foreground shadow-xs font-semibold'
