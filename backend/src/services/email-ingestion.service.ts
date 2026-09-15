@@ -70,16 +70,61 @@ export class EmailIngestionService {
   }
 
   /**
-   * Cleans text body from plain text or strips HTML markup
+   * Strips quoted historical message threads from email replies (e.g. "On ... wrote:", Outlook headers, > quotes)
+   */
+  static stripQuotedReply(text: string): string {
+    if (!text) return '';
+
+    const patterns = [
+      // 1. Gmail / iOS / Thunderbird: "On [Date], [Sender] wrote:" or "On [Date] at [Time], [Sender] wrote:"
+      /\r?\n\s*On\s+.+?,\s*.+?\s+wrote:\s*[\r\n]/i,
+      /\r?\n\s*On\s+[\s\S]+?wrote:\s*[\r\n]/i,
+      // 2. Outlook format: "-----Original Message-----"
+      /\r?\n\s*-+\s*Original Message\s*-+[\r\n]/i,
+      // 3. Outlook header block: "From: ... Sent: ... To: ... Subject: ..."
+      /\r?\n\s*From:\s*.+?\r?\n\s*(?:Sent|Date):\s*.+?\r?\n\s*To:\s*.+?/i,
+      // 4. Underscore separator (Yahoo / Webmail)
+      /\r?\n\s*_{10,}\s*[\r\n]/,
+    ];
+
+    let cleaned = text;
+
+    for (const pattern of patterns) {
+      const match = cleaned.search(pattern);
+      if (match !== -1) {
+        cleaned = cleaned.substring(0, match);
+        break;
+      }
+    }
+
+    // Strip any trailing block of lines starting with '>'
+    const lines = cleaned.split(/\r?\n/);
+    const resultLines: string[] = [];
+    for (const line of lines) {
+      if (line.trim().startsWith('>')) {
+        break;
+      }
+      resultLines.push(line);
+    }
+
+    const trimmedResult = resultLines.join('\n').trim();
+    return trimmedResult.length > 0 ? trimmedResult : text.trim();
+  }
+
+  /**
+   * Cleans text body from plain text or strips HTML markup, removing quoted thread history.
    */
   static cleanBody(body?: string, html?: string): string {
     if (body && body.trim().length > 0) {
-      return body.trim();
+      return this.stripQuotedReply(body);
     }
     if (html && html.trim().length > 0) {
       const stripped = html
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '')
+        .replace(/<div class="gmail_quote"[\s\S]*?<\/div>/gi, '')
+        .replace(/<div class="gmail_extra"[\s\S]*?<\/div>/gi, '')
         .replace(/<[^>]+>/g, ' ')
         .replace(/&nbsp;/gi, ' ')
         .replace(/&amp;/gi, '&')
@@ -91,7 +136,7 @@ export class EmailIngestionService {
         .trim();
 
       if (stripped.length > 0) {
-        return stripped;
+        return this.stripQuotedReply(stripped);
       }
     }
     return '';

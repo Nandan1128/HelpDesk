@@ -40,6 +40,33 @@ describe('EmailIngestionService - Unit & Integration Tests', () => {
       ).toBe('Hello support !');
       expect(EmailIngestionService.cleanBody('  trimmed text  ', '<p>ignored</p>')).toBe('trimmed text');
     });
+
+    test('cleanBody and stripQuotedReply remove quoted thread history from email replies', () => {
+      const gmailReply = `Test follow up massage
+
+On Tue, Sep 15, 2026, 9:25 PM Admin <support.nandangogari@gmail.com> wrote:
+
+> Support Reply: Ticket #327
+>
+> *Admin*:
+> this is agent from support team and this follow up massage
+>
+> You can reply directly to this email to respond.
+`;
+
+      expect(EmailIngestionService.cleanBody(gmailReply, undefined)).toBe('Test follow up massage');
+
+      const outlookReply = `I need help with this issue.
+
+-----Original Message-----
+From: support@ticketai.local
+Sent: Monday, September 14, 2026 10:00 AM
+To: customer@example.com
+Subject: Support Ticket #100
+`;
+
+      expect(EmailIngestionService.cleanBody(outlookReply, undefined)).toBe('I need help with this issue.');
+    });
   });
 
   describe('Validation Rules', () => {

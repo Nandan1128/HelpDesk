@@ -184,6 +184,8 @@ async function main() {
       ? agents[seed.assignedAgentIndex]
       : null;
 
+    const createdAt = new Date(now - seed.daysAgo * 24 * 60 * 60 * 1000 + i * 60 * 1000);
+
     const messagesCreate = seed.messages.map((m, msgIdx) => {
       const isAgent = m.senderType === SenderType.AGENT;
       const isSystem = m.senderType === SenderType.SYSTEM;

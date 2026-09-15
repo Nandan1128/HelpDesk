@@ -6,6 +6,7 @@ import { requireAuth, AuthenticatedRequest } from '../middleware/auth.middleware
 import { AIService } from '../services/ai.service.js';
 import { TicketClassifierService } from '../services/ticket-classifier.service.js';
 import { AutoResolveService } from '../services/auto-resolve.service.js';
+import { EmailService } from '../services/email.service.js';
 
 const router = Router();
 
@@ -1156,6 +1157,13 @@ router.post('/:id/messages', requireAuth, async (req: AuthenticatedRequest, res:
 
     const existingTicket = await prisma.ticket.findUnique({
       where,
+      include: {
+        messages: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
     });
 
     if (!existingTicket) {
@@ -1163,6 +1171,16 @@ router.post('/:id/messages', requireAuth, async (req: AuthenticatedRequest, res:
     }
 
     const user = req.user;
+
+    // Find latest parent message ID for email client threading (In-Reply-To)
+    const lastCustomerMessage = [...existingTicket.messages]
+      .reverse()
+      .find((m) => m.senderType === SenderType.CUSTOMER && m.messageIdHeader);
+    const inReplyToMessageId =
+      lastCustomerMessage?.messageIdHeader ||
+      existingTicket.messages[existingTicket.messages.length - 1]?.messageIdHeader ||
+      undefined;
+
     const [newMessage, updatedTicket] = await prisma.$transaction([
       prisma.message.create({
         data: {
@@ -1171,6 +1189,7 @@ router.post('/:id/messages', requireAuth, async (req: AuthenticatedRequest, res:
           senderEmail: user?.email || 'support@ticketai.local',
           senderName: user?.name || 'Support Agent',
           body,
+          inReplyToHeader: inReplyToMessageId || null,
         },
       }),
       prisma.ticket.update({
@@ -1195,6 +1214,30 @@ router.post('/:id/messages', requireAuth, async (req: AuthenticatedRequest, res:
         },
       }),
     ]);
+
+    // Send the reply directly to the customer's email with In-Reply-To threading
+    if (existingTicket.customerEmail) {
+      try {
+        const emailResult = await EmailService.sendTicketReplyNotification({
+          to: existingTicket.customerEmail,
+          ticketNumber: existingTicket.ticketNumber,
+          title: existingTicket.subject,
+          senderName: user?.name || 'Support Agent',
+          messageContent: body,
+          inReplyToMessageId,
+        });
+
+        if (emailResult.success && emailResult.messageId) {
+          // Persist the outgoing messageIdHeader for future threading
+          await prisma.message.update({
+            where: { id: newMessage.id },
+            data: { messageIdHeader: emailResult.messageId },
+          });
+        }
+      } catch (emailErr) {
+        console.warn('⚠️ [TicketRoutes] Could not send reply email to customer:', emailErr);
+      }
+    }
 
     return res.status(201).json({
       message: newMessage,

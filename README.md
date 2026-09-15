@@ -11,7 +11,7 @@ An intelligent, multi-tenant Ticket Management System with AI classification, th
 * **Database & ORM:** PostgreSQL 16 (with `pgvector` extension) & Prisma ORM
 * **AI Engine:** Google Gemini (`@google/genai`)
 * **Session Auth:** Better Auth / Database-backed sessions
-* **Email Service:** SendGrid / Mailgun & In-app Webhook Simulator
+* **Email Service:** Gmail SMTP & IMAP (`nodemailer`, `imapflow`, `mailparser`), Custom SMTP, SendGrid, Mailgun & Webhook Ingestion
 
 ---
 
@@ -143,6 +143,19 @@ ADMIN_EMAIL="admin@ticketai.local"
 ADMIN_PASSWORD="AdminPassword123!"
 ADMIN_NAME="System Administrator"
 
+# Email Provider Configuration (Gmail SMTP/IMAP, Custom SMTP, SendGrid, or Mock)
+EMAIL_PROVIDER="gmail" # Options: "gmail", "smtp", "sendgrid", "mailgun", "mock"
+EMAIL_USER="support.nandangogari@gmail.com"
+EMAIL_PASS="your-16-character-google-app-password"
+SUPPORT_EMAIL="support.nandangogari@gmail.com"
+
+# Inbound IMAP Background Polling
+IMAP_ENABLED=true
+IMAP_HOST="imap.gmail.com"
+IMAP_PORT=993
+IMAP_SECURE=true
+IMAP_POLL_INTERVAL_SEC=30
+
 # backend/.env.test (Isolated Testing)
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/helpdesk_test?schema=public"
 PORT=5001
@@ -150,9 +163,61 @@ NODE_ENV=test
 BETTER_AUTH_SECRET="test-secret-key-32-chars-minimum-ticket-ai-test"
 BETTER_AUTH_URL="http://localhost:5001"
 TRUSTED_ORIGINS="http://localhost:5173,http://localhost:5001,http://localhost:5000"
+EMAIL_PROVIDER="mock"
 
 # frontend/.env
 VITE_API_URL="/api"
+```
+
+---
+
+## 📧 Email Integration & Smart Threading (Inbound & Outbound)
+
+The application includes a production-grade, two-way email management system that connects directly to your support email (such as **Gmail** with Google App Passwords) without requiring expensive custom domain verification during development.
+
+### 1. Two-Way Email Architecture
+
+```
+[Customer Email] ────────► [Gmail Inbox: support@domain.com]
+                                       │
+                                       ▼ (IMAP Polling every 30s)
+                               [Backend Server]
+                                       │
+                      ┌────────────────┴────────────────┐
+                      ▼                                 ▼
+             [New Customer Email]              [Customer Reply]
+                      │                                 │
+             Creates New Ticket                Appends to Thread
+                      │                         (Strips Quote History)
+             Silent Ticket Creation                     │
+            (No spam auto-receipt)                      ▼
+                      │                         [Agent Dashboard]
+                      ▼                                 │
+              [Agent Dashboard]                         │ Agent replies from UI
+                      │                                 ▼
+                      └────────────────────────► [Outbound SMTP]
+                                                 (With In-Reply-To & References)
+                                                        │
+                                                        ▼
+                                            [Customer Email Reply Thread]
+```
+
+### 2. Key Capabilities & Features
+
+* **Direct Gmail SMTP & IMAP Integration:** Connects with `smtp.gmail.com:465` (outbound) and `imap.gmail.com:993` (inbound) using standard 16-character Google App Passwords.
+* **Silent Inbound Ticket Ingestion:** Incoming customer emails automatically create tickets in PostgreSQL and trigger AI classification and knowledge-base auto-resolution without sending disruptive receipt spam.
+* **In-Reply-To Conversation Threading:** When an agent replies from the web application, outgoing emails carry standard RFC headers (`In-Reply-To` and `References`), allowing replies to land cleanly inside the customer's existing conversation thread in Gmail, Outlook, or Apple Mail.
+* **Intelligent Quote & History Stripping:** When customers reply to emails, automated email client quote blocks (e.g. `On <date>, <sender> wrote:`, `-----Original Message-----`, and `>` quotes) are stripped cleanly before messages are stored.
+* **Automated Newsletter & Spam Filtering:** Inbound polling automatically skips bulk mailing lists (`List-Unsubscribe`, `Precedence: bulk`), system daemon messages (`mailer-daemon`), `no-reply` senders, and historical pre-boot emails.
+
+### 3. Email Diagnostic Commands
+
+```bash
+# 1. Test Outbound Delivery (SMTP)
+bun run email:test recipient@example.com
+
+# 2. Check & Poll Inbox on Demand (IMAP)
+bun run email:poll
 ```
 
 ---
@@ -441,14 +506,17 @@ Full agent configuration and extended runbooks are maintained in [`.agents/agent
 │   │   ├── schema.prisma      # Database schema (User, Session, Ticket, Message, KB)
 │   │   └── seed.ts            # Seeder for admin, agents, KB articles, sample tickets
 │   ├── scripts/
-│   │   └── setup-test-db.ts   # Automated test database creator & schema synchronizer
+│   │   ├── setup-test-db.ts   # Automated test database creator & schema synchronizer
+│   │   ├── test-email.ts      # Diagnostic script to test outbound SMTP delivery
+│   │   └── poll-emails.ts     # Diagnostic script to test inbound IMAP polling
 │   ├── src/
 │   │   ├── config/env.ts      # Environment validation (loads .env.test when NODE_ENV=test)
 │   │   ├── db/prisma.ts       # Prisma Client singleton
 │   │   ├── lib/auth.ts        # Better Auth configuration (production-only rate limiting)
 │   │   ├── middleware/        # Auth & RBAC Express middleware
-│   │   ├── routes/            # API Route handlers (user.routes.ts)
-│   │   └── index.ts           # Express server entry point (production-only rate limiting)
+│   │   ├── routes/            # API Route handlers (user.routes.ts, ticket.routes.ts, email.routes.ts)
+│   │   ├── services/          # Business logic (email.service.ts, imap-listener.service.ts, ai.service.ts)
+│   │   └── index.ts           # Express server entry point with background services
 │   ├── package.json
 │   └── tsconfig.json
 ├── frontend/

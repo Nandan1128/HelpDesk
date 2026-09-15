@@ -9,6 +9,7 @@ import { auth } from './lib/auth.js';
 import { requireAuth, requireRole, AuthenticatedRequest } from './middleware/auth.middleware.js';
 import { userRoutes, emailRoutes, ticketRoutes } from './routes/index.js';
 import { QueueService } from './services/queue.service.js';
+import { ImapListenerService } from './services/imap-listener.service.js';
 
 const app = express();
 
@@ -126,12 +127,20 @@ const server = app.listen(env.PORT, async () => {
   } catch (error) {
     console.error('Failed to initialize pg-boss queue service:', error);
   }
+
+  // Start IMAP background email polling if enabled
+  try {
+    ImapListenerService.start();
+  } catch (error) {
+    console.error('Failed to start IMAP email listener service:', error);
+  }
 });
 
 // Graceful process shutdown
 const shutdown = async (signal: string) => {
   console.log(`\nReceived ${signal}. Gracefully shutting down...`);
   try {
+    ImapListenerService.stop();
     await QueueService.stop();
     await prisma.$disconnect();
     server.close(() => {

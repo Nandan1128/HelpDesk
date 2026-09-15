@@ -3,6 +3,7 @@ import { prisma } from '../db/prisma.js';
 import { env } from '../config/env.js';
 import { AIService, AutoResolveEvaluationResult } from './ai.service.js';
 import { QueueService } from './queue.service.js';
+import { EmailService } from './email.service.js';
 
 export interface ProcessTicketResult {
   ticket: Ticket;
@@ -166,7 +167,16 @@ export class AutoResolveService {
 
       // Branch A: AI Auto-Resolved ticket -> Post SYSTEM message and transition to RESOLVED
       if (evaluation.canAutoResolve && evaluation.resolutionMessage) {
-        const [, resolvedTicket] = await prisma.$transaction([
+        // Find latest customer message ID for email client threading (In-Reply-To)
+        const lastCustomerMessage = [...ticket.messages]
+          .reverse()
+          .find((m) => m.senderType === SenderType.CUSTOMER && m.messageIdHeader);
+        const inReplyToMessageId =
+          lastCustomerMessage?.messageIdHeader ||
+          ticket.messages[ticket.messages.length - 1]?.messageIdHeader ||
+          undefined;
+
+        const [newMessage, resolvedTicket] = await prisma.$transaction([
           prisma.message.create({
             data: {
               ticketId: ticket.id,
@@ -174,6 +184,7 @@ export class AutoResolveService {
               senderName: 'TicketAI Support',
               senderEmail: env.SUPPORT_EMAIL,
               body: evaluation.resolutionMessage,
+              inReplyToHeader: inReplyToMessageId || null,
             },
           }),
           prisma.ticket.update({
@@ -196,8 +207,31 @@ export class AutoResolveService {
           }),
         ]);
 
+        // Deliver AI Auto-Resolution reply to customer's email inbox
+        if (ticket.customerEmail) {
+          try {
+            const emailResult = await EmailService.sendTicketReplyNotification({
+              to: ticket.customerEmail,
+              ticketNumber: resolvedTicket.ticketNumber,
+              title: resolvedTicket.subject,
+              senderName: 'TicketAI Support',
+              messageContent: evaluation.resolutionMessage,
+              inReplyToMessageId,
+            });
+
+            if (emailResult.success && emailResult.messageId) {
+              await prisma.message.update({
+                where: { id: newMessage.id },
+                data: { messageIdHeader: emailResult.messageId },
+              });
+            }
+          } catch (emailErr) {
+            console.warn('⚠️ [AutoResolveService] Could not send auto-resolve email to customer:', emailErr);
+          }
+        }
+
         console.log(
-          `[AutoResolveService] Ticket #${resolvedTicket.ticketNumber} AUTO-RESOLVED by AI. Category: ${resolvedTicket.category}, Priority: ${resolvedTicket.priority}, Assigned to AI Agent (${aiAgent.name}).`
+          `[AutoResolveService] Ticket #${resolvedTicket.ticketNumber} AUTO-RESOLVED by AI. Category: ${resolvedTicket.category}, Priority: ${resolvedTicket.priority}, Assigned to AI Agent (${aiAgent.name}). Email sent to ${ticket.customerEmail}.`
         );
 
         return {

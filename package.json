@@ -21,6 +21,8 @@
     "db:test:seed": "cd backend && bun run db:test:seed",
     "test:frontend": "cd frontend && bun run test",
     "test:backend": "cd backend && bun run test",
+    "email:test": "cd backend && bun run email:test",
+    "email:poll": "cd backend && bun run email:poll",
     "test:e2e": "bun run db:test:setup && playwright test",
     "test:e2e:ui": "bun run db:test:setup && playwright test --ui",
     "test:e2e:debug": "bun run db:test:setup && playwright test --debug",

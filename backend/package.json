@@ -18,7 +18,9 @@
     "db:push": "bun x prisma db push",
     "db:test:setup": "bun scripts/setup-test-db.ts",
     "db:test:reset": "bun scripts/setup-test-db.ts --reset",
-    "db:test:seed": "bun scripts/setup-test-db.ts --seed"
+    "db:test:seed": "bun scripts/setup-test-db.ts --seed",
+    "email:test": "bun scripts/test-email.ts",
+    "email:poll": "bun scripts/poll-emails.ts"
   },
   "prisma": {
     "seed": "bun prisma/seed.ts"
@@ -34,6 +36,9 @@
     "express": "^4.21.2",
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
+    "imapflow": "^2.0.5",
+    "mailparser": "^3.9.28",
+    "nodemailer": "^10.0.10",
     "pg": "^8.13.1",
     "pg-boss": "^12.30.0",
     "zod": "^3.24.1"
@@ -42,7 +47,9 @@
     "@types/bun": "^1.4.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^22.10.1",
+    "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.11.10",
     "prisma": "^5.22.0",
     "typescript": "^5.7.2"
