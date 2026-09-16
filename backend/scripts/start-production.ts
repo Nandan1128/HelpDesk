@@ -5,15 +5,15 @@ import { hashPassword } from 'better-auth/crypto';
 const prisma = new PrismaClient();
 
 async function runMigrations() {
-  console.log('🔄 Running database migrations (prisma migrate deploy)...');
+  console.log('🔄 Synchronizing database schema (prisma db push)...');
   try {
-    execSync('bun x prisma migrate deploy', {
+    execSync('bun x prisma db push --accept-data-loss', {
       stdio: 'inherit',
       env: process.env,
     });
-    console.log('✅ Database migrations applied successfully.');
+    console.log('✅ Database schema synchronized successfully.');
   } catch (error) {
-    console.error('❌ Failed to run database migrations:', error);
+    console.error('❌ Failed to synchronize database schema:', error);
     process.exit(1);
   }
 }

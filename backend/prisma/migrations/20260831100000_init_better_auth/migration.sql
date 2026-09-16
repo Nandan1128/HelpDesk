@@ -2,7 +2,7 @@
 CREATE TYPE "Role" AS ENUM ('ADMIN', 'AGENT');
 
 -- CreateEnum
-CREATE TYPE "TicketStatus" AS ENUM ('OPEN', 'RESOLVED', 'CLOSED');
+CREATE TYPE "TicketStatus" AS ENUM ('NEW', 'PROCESSING', 'OPEN', 'RESOLVED', 'CLOSED');
 
 -- CreateEnum
 CREATE TYPE "TicketCategory" AS ENUM ('GENERAL_QUESTION', 'TECHNICAL_QUESTION', 'REFUND_REQUEST');
@@ -22,6 +22,7 @@ CREATE TABLE "user" (
     "image" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
     "role" "Role" NOT NULL DEFAULT 'AGENT',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
 
@@ -79,7 +80,7 @@ CREATE TABLE "Ticket" (
     "id" TEXT NOT NULL,
     "ticketNumber" SERIAL NOT NULL,
     "subject" TEXT NOT NULL,
-    "status" "TicketStatus" NOT NULL DEFAULT 'OPEN',
+    "status" "TicketStatus" NOT NULL DEFAULT 'NEW',
     "category" "TicketCategory" NOT NULL DEFAULT 'GENERAL_QUESTION',
     "priority" "Priority" NOT NULL DEFAULT 'MEDIUM',
     "customerEmail" TEXT NOT NULL,
@@ -126,6 +127,9 @@ CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 
 -- CreateIndex
 CREATE INDEX "user_role_idx" ON "user"("role");
+
+-- CreateIndex
+CREATE INDEX "user_deletedAt_idx" ON "user"("deletedAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "session_token_key" ON "session"("token");
