@@ -30,24 +30,31 @@ if (process.env.NODE_ENV === 'test') {
   }
 }
 
+const ensureProtocol = (url: string) => {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
 const envSchema = z
   .object({
     PORT: z.coerce.number().default(5000),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-    FRONTEND_URL: z.string().default('http://localhost:5173'),
+    FRONTEND_URL: z.string().default('http://localhost:5173').transform(ensureProtocol),
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     BETTER_AUTH_SECRET: z
       .string()
       .min(32, 'BETTER_AUTH_SECRET must be at least 32 characters')
       .default('development-secret-key-32-chars-minimum-ticket-ai'),
-    BETTER_AUTH_URL: z.string().default('http://localhost:5000'),
+    BETTER_AUTH_URL: z.string().default('http://localhost:5000').transform(ensureProtocol),
     TRUSTED_ORIGINS: z
       .string()
       .min(1, 'TRUSTED_ORIGINS is required in .env')
       .transform((val) =>
         val
           .split(',')
-          .map((origin) => origin.trim())
+          .map((origin) => ensureProtocol(origin.trim()))
           .filter(Boolean)
       ),
     GEMINI_API_KEY: z.string().optional().default(''),
