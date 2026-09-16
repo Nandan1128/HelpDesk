@@ -172,6 +172,14 @@ export class EmailService {
           : 'onboarding@resend.dev';
         const replyToAddress = options.replyTo || env.EMAIL_USER || env.SUPPORT_EMAIL || fromAddress;
 
+        const resendHeaders: Record<string, string> = {};
+        if (options.inReplyTo) {
+          resendHeaders['In-Reply-To'] = options.inReplyTo;
+        }
+        if (options.references || options.inReplyTo) {
+          resendHeaders['References'] = options.references || options.inReplyTo || '';
+        }
+
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -185,6 +193,7 @@ export class EmailService {
             html: options.html,
             text: options.text,
             reply_to: replyToAddress,
+            ...(Object.keys(resendHeaders).length > 0 ? { headers: resendHeaders } : {}),
           }),
         });
 
