@@ -40,10 +40,12 @@ export class EmailService {
       }
 
       this.transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true, // Direct SSL on port 465 avoids cloud container firewall ETIMEDOUT
         auth: {
-          user: env.EMAIL_USER,
-          pass: env.EMAIL_PASS,
+          user: env.EMAIL_USER.trim(),
+          pass: env.EMAIL_PASS.replace(/\s+/g, ''),
         },
       });
       return this.transporter;
