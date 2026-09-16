@@ -18,9 +18,17 @@ import { ImapListenerService } from './services/imap-listener.service.js';
 
 const app = express();
 
+// Instant Healthcheck for Railway / load balancer probes (bypasses rate limiting & middleware)
+app.get(['/api/health', '/health'], (_req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Sentry response status monitor (captures any 5xx response automatically)
 app.use(sentryResponseErrorCaptureMiddleware);
-
 
 // Trust reverse proxy in production (for accurate client IP resolution & secure cookies)
 if (env.NODE_ENV === 'production') {
@@ -35,7 +43,7 @@ app.use(
   })
 );
 
-// Rate Limiters (Enabled only in production)
+// Rate Limiters (Enabled only in production for API routes)
 if (env.NODE_ENV === 'production') {
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -46,19 +54,6 @@ if (env.NODE_ENV === 'production') {
   });
   app.use('/api', apiLimiter);
 }
-
-// Dedicated Healthcheck Rate Limiter in production to prevent DB connection exhaustion
-const healthMiddlewares =
-  env.NODE_ENV === 'production'
-    ? [
-      rateLimit({
-        windowMs: 1 * 60 * 1000, // 1 minute
-        max: 60, // 60 requests per minute
-        standardHeaders: true,
-        legacyHeaders: false,
-      }),
-    ]
-    : [];
 
 app.use(
   cors({
@@ -72,28 +67,6 @@ app.all('/api/auth/*', toNodeHandler(auth));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Basic Healthcheck & DB ping
-app.get(['/api/health', '/health'], ...healthMiddlewares, async (req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({
-      status: 'healthy',
-      database: 'connected',
-      timestamp: new Date().toISOString(),
-      version: '1.0.0',
-    });
-  } catch (error) {
-    console.error('Health check database error:', error);
-    res.status(500).json({
-      status: 'unhealthy',
-      database: 'disconnected',
-      error: env.NODE_ENV === 'development' && error instanceof Error
-        ? error.message
-        : 'Database connectivity error',
-    });
-  }
-});
 
 // Protected Route: Returns current user & session from Better Auth
 app.get('/api/me', requireAuth, (req: AuthenticatedRequest, res) => {
