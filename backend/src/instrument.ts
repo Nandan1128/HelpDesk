@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
-// Respect test environment when loading env variables
+// Respect test environment when loading env variables (without overriding existing environment variables)
 if (process.env.NODE_ENV === 'test') {
   const possibleTestEnvPaths = [
     path.resolve(process.cwd(), '.env.test'),
@@ -12,7 +12,7 @@ if (process.env.NODE_ENV === 'test') {
   ];
   for (const envPath of possibleTestEnvPaths) {
     if (fs.existsSync(envPath)) {
-      dotenv.config({ path: envPath, override: true });
+      dotenv.config({ path: envPath, override: false });
       break;
     }
   }
@@ -24,7 +24,7 @@ if (process.env.NODE_ENV === 'test') {
   ];
   for (const envPath of possibleEnvPaths) {
     if (fs.existsSync(envPath)) {
-      dotenv.config({ path: envPath, override: true });
+      dotenv.config({ path: envPath, override: false });
       break;
     }
   }

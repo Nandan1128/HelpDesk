@@ -1,0 +1,15 @@
+# Nixpacks configuration for Railway
+[phases.setup]
+nixPkgs = ["bun", "openssl"]
+
+[phases.install]
+cmds = ["bun install"]
+
+[phases.build]
+cmds = [
+  "cd backend && bun x prisma generate",
+  "cd frontend && bun run build"
+]
+
+[start]
+cmd = "cd backend && bun scripts/start-production.ts"

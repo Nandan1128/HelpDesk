@@ -63,6 +63,16 @@ bun run dev
 
 ---
 
+## 🚢 Production Deployment to Railway
+
+The app is fully configured for zero-friction 1-click deployment on **[Railway](https://railway.app)** using either a **unified fullstack container** or a **multi-service architecture** (PostgreSQL + Express backend + React frontend).
+
+* **Full Deployment Guide:** See [RAILWAY_DEPLOYMENT.md](file:///d:/codewithmosh/AI-Powered%20Ticket%20Management%20System/RAILWAY_DEPLOYMENT.md) for step-by-step instructions.
+* **Environment Template:** See [.env.production.example](file:///d:/codewithmosh/AI-Powered%20Ticket%20Management%20System/.env.production.example).
+* **Automations Included:** Automatic Prisma migrations (`prisma migrate deploy`), automated fresh DB admin seeding, healthcheck probe (`/api/health`), and static SPA client routing.
+
+---
+
 ## 🔐 Authentication & Access Control
 
 The application implements a robust, database-backed authentication system powered by **Better Auth** with the **Prisma PostgreSQL Adapter**.

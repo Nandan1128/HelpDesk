@@ -1,4 +1,6 @@
 import './instrument.js';
+import path from 'path';
+import fs from 'fs';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -28,7 +30,7 @@ if (env.NODE_ENV === 'production') {
 // HTTP Security Headers
 app.use(
   helmet({
-    contentSecurityPolicy: env.NODE_ENV === 'production' ? undefined : false,
+    contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
@@ -130,6 +132,29 @@ app.use('/api/tickets', ticketRoutes);
 if (env.NODE_ENV !== 'production') {
   app.get('/api/debug/sentry-test', (_req, _res) => {
     throw new Error('TicketAI Sentry Backend Test Error - Everything is working properly!');
+  });
+}
+
+// Static Frontend Serving (Enabled when built frontend dist is present)
+const possibleFrontendPaths = [
+  path.resolve(process.cwd(), '../frontend/dist'),
+  path.resolve(process.cwd(), 'frontend/dist'),
+  path.resolve(process.cwd(), 'dist/public'),
+  path.resolve(process.cwd(), 'public'),
+];
+
+const frontendDistPath = possibleFrontendPaths.find((dir) => fs.existsSync(dir));
+
+if (frontendDistPath) {
+  console.log(`📦 Serving static frontend bundle from: ${frontendDistPath}`);
+  app.use(express.static(frontendDistPath));
+
+  // Client-side SPA routing fallback for non-API GET requests
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
 }
 

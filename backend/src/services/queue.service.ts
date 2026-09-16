@@ -23,9 +23,7 @@ export class QueueService {
    */
   static async getBoss(): Promise<PgBoss> {
     if (!this.boss) {
-      this.boss = new PgBoss({
-        connectionString: env.DATABASE_URL,
-      });
+      this.boss = new PgBoss(env.DATABASE_URL);
 
       this.boss.on('error', (err: unknown) => {
         console.error('[pg-boss Queue Error]:', err);
