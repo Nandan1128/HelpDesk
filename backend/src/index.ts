@@ -144,40 +144,82 @@ app.use(errorHandler);
 const server = app.listen(env.PORT, '0.0.0.0', async () => {
   console.log(`🚀 TicketAI Backend server running on http://0.0.0.0:${env.PORT}`);
   console.log(`📡 Environment: ${env.NODE_ENV}`);
-  // Run initial admin bootstrap check asynchronously in background
+  // Synchronize or create admin account credentials from environment variables
   (async () => {
     try {
-      const userCount = await prisma.user.count();
-      if (userCount === 0) {
-        console.log('🌱 Fresh database detected. Creating initial administrator account...');
-        const adminEmail = env.ADMIN_EMAIL || 'admin@ticketai.local';
-        const adminPassword = env.ADMIN_PASSWORD;
-        const adminName = env.ADMIN_NAME || 'System Administrator';
+      const adminEmail = (env.ADMIN_EMAIL || 'admin@ticketai.local').toLowerCase().trim();
+      const adminPassword = env.ADMIN_PASSWORD;
+      const adminName = env.ADMIN_NAME || 'System Administrator';
 
+      if (adminEmail && adminPassword) {
         const hashedPassword = await hashPassword(adminPassword);
-        const admin = await prisma.user.create({
-          data: {
-            email: adminEmail,
-            name: adminName,
-            role: Role.ADMIN,
-            isActive: true,
-            emailVerified: true,
+        
+        let admin = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: adminEmail },
+              { role: Role.ADMIN },
+            ],
           },
         });
 
-        await prisma.account.create({
-          data: {
-            accountId: admin.id,
-            userId: admin.id,
-            providerId: 'credential',
-            issuer: 'local:credential',
-            password: hashedPassword,
-          },
-        });
-        console.log(`✅ Initial Admin Account created: ${adminEmail}`);
+        if (!admin) {
+          admin = await prisma.user.create({
+            data: {
+              email: adminEmail,
+              name: adminName,
+              role: Role.ADMIN,
+              isActive: true,
+              emailVerified: true,
+            },
+          });
+          await prisma.account.create({
+            data: {
+              accountId: admin.id,
+              userId: admin.id,
+              providerId: 'credential',
+              issuer: 'local:credential',
+              password: hashedPassword,
+            },
+          });
+          console.log(`✅ Admin account created: ${adminEmail}`);
+        } else {
+          // Update existing admin account to match current environment variables
+          await prisma.user.update({
+            where: { id: admin.id },
+            data: {
+              email: adminEmail,
+              name: adminName,
+              isActive: true,
+              role: Role.ADMIN,
+            },
+          });
+
+          const account = await prisma.account.findFirst({
+            where: { userId: admin.id, providerId: 'credential' },
+          });
+
+          if (account) {
+            await prisma.account.update({
+              where: { id: account.id },
+              data: { password: hashedPassword },
+            });
+          } else {
+            await prisma.account.create({
+              data: {
+                accountId: admin.id,
+                userId: admin.id,
+                providerId: 'credential',
+                issuer: 'local:credential',
+                password: hashedPassword,
+              },
+            });
+          }
+          console.log(`🔑 Admin account credentials synchronized for: ${adminEmail}`);
+        }
       }
     } catch (err) {
-      console.warn('Initial admin check warning (non-fatal):', err);
+      console.warn('Admin credentials sync warning (non-fatal):', err);
     }
   })();
 
