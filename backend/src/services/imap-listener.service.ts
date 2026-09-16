@@ -211,6 +211,9 @@ export class ImapListenerService {
       const html = typeof parsed.html === 'string' ? parsed.html : (parsed.textAsHtml || undefined);
       const messageId = parsed.messageId?.trim();
       const inReplyTo = parsed.inReplyTo?.trim();
+      const references = Array.isArray(parsed.references)
+        ? parsed.references.join(' ')
+        : (typeof parsed.references === 'string' ? parsed.references.trim() : undefined);
       const emailDate = parsed.date ? new Date(parsed.date) : new Date();
 
       // Filter 1: Check if this email is an automated newsletter/promotion
@@ -252,6 +255,7 @@ export class ImapListenerService {
           html: html || undefined,
           messageId,
           inReplyTo,
+          references,
         });
 
         console.log(

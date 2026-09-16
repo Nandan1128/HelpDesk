@@ -22,6 +22,7 @@ export const inboundEmailSchema = z
     html: z.string().optional(),
     messageId: z.string().trim().optional(),
     inReplyTo: z.string().trim().optional(),
+    references: z.string().trim().optional(),
   })
   .refine(
     (data) => (data.body && data.body.trim().length > 0) || (data.html && data.html.trim().length > 0),
@@ -166,10 +167,40 @@ export class EmailIngestionService {
 
     let existingTicket: Ticket | null = null;
 
-    // Threading Step 1: Check In-Reply-To header against existing messages
-    if (data.inReplyTo) {
+    // Threading Step 1: Check In-Reply-To and References headers against existing messages
+    const threadHeaders = [data.inReplyTo, data.references].filter(Boolean) as string[];
+    if (threadHeaders.length > 0) {
+      const candidateTokens = new Set<string>();
+
+      for (const header of threadHeaders) {
+        // Collect raw header
+        candidateTokens.add(header.trim());
+        // Extract items within angle brackets <...> or space separated
+        const angleMatches = header.match(/<([^>]+)>/g);
+        if (angleMatches) {
+          for (const match of angleMatches) {
+            const inner = match.replace(/^<|>$/g, '').trim();
+            candidateTokens.add(inner);
+            const prefix = inner.split('@')[0];
+            if (prefix && prefix.length >= 8) candidateTokens.add(prefix);
+          }
+        }
+        const cleaned = header.replace(/^<|>$/g, '').trim();
+        candidateTokens.add(cleaned);
+        const prefix = cleaned.split('@')[0];
+        if (prefix && prefix.length >= 8) candidateTokens.add(prefix);
+      }
+
+      const tokenList = Array.from(candidateTokens).filter((t) => t.length > 0);
+
       const parentMessage = await prisma.message.findFirst({
-        where: { messageIdHeader: data.inReplyTo.trim() },
+        where: {
+          OR: tokenList.flatMap((token) => [
+            { messageIdHeader: token },
+            { messageIdHeader: `<${token}>` },
+            { messageIdHeader: { contains: token } },
+          ]),
+        },
         include: { ticket: true },
       });
 

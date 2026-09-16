@@ -305,9 +305,11 @@ export class EmailService {
     messageContent: string;
     inReplyToMessageId?: string;
   }) {
-    const subject = params.title.toLowerCase().startsWith('re:')
-      ? params.title
-      : `Re: ${params.title}`;
+    const cleanTitle = params.title.replace(/^re:\s*/i, '').trim();
+    const hasTicketTag = cleanTitle.includes(`[#${params.ticketNumber}]`) || cleanTitle.includes(`[${params.ticketNumber}]`);
+    const subject = hasTicketTag
+      ? `Re: ${cleanTitle}`
+      : `Re: [#${params.ticketNumber}] ${cleanTitle}`;
 
     const html = `
       <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
