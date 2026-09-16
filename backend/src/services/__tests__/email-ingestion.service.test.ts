@@ -242,6 +242,61 @@ Subject: Support Ticket #100
       expect(dbTicket?.status).toBe(TicketStatus.OPEN);
     });
 
+    test('reopens a RESOLVED ticket even when subject lacks [#tag] using Resend In-Reply-To headers', async () => {
+      const uniqueSuffix = Date.now() + 4;
+      const resendMessageId = `resend-uuid-${uniqueSuffix}-abc123xyz`;
+
+      // 1. Initial customer ticket
+      const initialResult = await EmailIngestionService.processInboundEmail({
+        from: `customer_${uniqueSuffix}@example.com`,
+        to: 'support@ticketai.local',
+        subject: `Password reset query ${uniqueSuffix}`,
+        body: 'How do I reset my password?',
+      });
+
+      createdTicketIds.push(initialResult.ticket.id);
+
+      // 2. System auto-resolves and saves outbound Resend message ID
+      await prisma.message.create({
+        data: {
+          ticketId: initialResult.ticket.id,
+          senderType: SenderType.SYSTEM,
+          senderName: 'TicketAI Support',
+          senderEmail: 'onboarding@resend.dev',
+          body: 'Here are the steps to reset your password.',
+          messageIdHeader: resendMessageId,
+        },
+      });
+
+      await prisma.ticket.update({
+        where: { id: initialResult.ticket.id },
+        data: { status: TicketStatus.RESOLVED },
+      });
+
+      // 3. Customer replies in Gmail (Gmail sends angle brackets and domain suffix on in-reply-to)
+      const replyResult = await EmailIngestionService.processInboundEmail({
+        from: `customer_${uniqueSuffix}@example.com`,
+        to: 'support.nandangogari@gmail.com',
+        subject: `Re: Password reset query ${uniqueSuffix}`, // No [#ticketNumber] tag!
+        body: 'Thanks, but the reset link is not working for me.',
+        messageId: `<gmail-reply-${uniqueSuffix}@mail.gmail.com>`,
+        inReplyTo: `<${resendMessageId}@resend.dev>`,
+        references: `<${resendMessageId}@resend.dev>`,
+      });
+
+      expect(replyResult.action).toBe('appended_message');
+      expect(replyResult.ticket.id).toBe(initialResult.ticket.id);
+      expect(replyResult.ticket.status).toBe(TicketStatus.OPEN);
+      expect(replyResult.isReopened).toBe(true);
+      expect(replyResult.message.body).toBe('Thanks, but the reset link is not working for me.');
+
+      // Verify in DB that the resolved ticket was reopened to OPEN
+      const dbTicket = await prisma.ticket.findUnique({
+        where: { id: initialResult.ticket.id },
+      });
+      expect(dbTicket?.status).toBe(TicketStatus.OPEN);
+    });
+
     test('returns immediately without blocking caller when ingesting email', async () => {
       const uniqueSuffix = Date.now();
       const startTime = Date.now();
