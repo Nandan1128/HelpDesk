@@ -1,8 +1,7 @@
 import { execSync } from 'child_process';
-import { PrismaClient, Role, TicketCategory } from '@prisma/client';
+import { prisma } from '../src/db/prisma.js';
+import { Role, TicketCategory } from '@prisma/client';
 import { hashPassword } from 'better-auth/crypto';
-
-const prisma = new PrismaClient();
 
 async function runMigrations() {
   console.log('🔄 Synchronizing database schema (prisma db push)...');
@@ -84,9 +83,6 @@ async function ensureInitialAdminAndData() {
     }
   } catch (error) {
     console.error('⚠️ Warning during database verification/seed:', error);
-    // Do not crash server startup if seeding check fails but migrations succeeded
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -99,7 +95,6 @@ async function main() {
   await ensureInitialAdminAndData();
 
   console.log('🌟 Starting Express Web Server...');
-  // Dynamically import the main server module
   await import('../src/index.ts');
 }
 
