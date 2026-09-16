@@ -74,7 +74,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Basic Healthcheck & DB ping
-app.get('/api/health', ...healthMiddlewares, async (req, res) => {
+app.get(['/api/health', '/health'], ...healthMiddlewares, async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({
@@ -166,8 +166,8 @@ app.use((req, res) => {
 // Global Error Handler Middleware (captures uncaught exceptions with Sentry)
 app.use(errorHandler);
 
-const server = app.listen(env.PORT, async () => {
-  console.log(`🚀 TicketAI Backend server running on http://localhost:${env.PORT}`);
+const server = app.listen(env.PORT, '0.0.0.0', async () => {
+  console.log(`🚀 TicketAI Backend server running on http://0.0.0.0:${env.PORT}`);
   console.log(`📡 Environment: ${env.NODE_ENV}`);
   try {
     await QueueService.start();
