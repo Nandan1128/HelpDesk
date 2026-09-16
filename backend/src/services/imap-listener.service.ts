@@ -1,6 +1,7 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser, ParsedMail } from 'mailparser';
 import { env } from '../config/env.js';
+import { captureServiceError } from '../config/sentry.js';
 import { EmailIngestionService } from './email-ingestion.service.js';
 import { EmailService } from './email.service.js';
 
@@ -266,6 +267,11 @@ export class ImapListenerService {
         });
       } catch (ingestErr: any) {
         console.error(`❌ [ImapListener] Ingestion failed for email from ${senderAddress}:`, ingestErr);
+        captureServiceError(ingestErr, {
+          service: 'imap-listener',
+          action: 'process-inbound-email',
+          extra: { sender: senderAddress, subject, uid },
+        });
         results.push({
           uid,
           from: senderAddress,
@@ -298,7 +304,10 @@ export class ImapListenerService {
     console.log(`🚀 [ImapListener] Starting Gmail IMAP polling service (every ${env.IMAP_POLL_INTERVAL_SEC}s)...`);
 
     // Immediate initial poll
-    this.pollOnce().catch((err) => console.error('[ImapListener] Initial poll error:', err));
+    this.pollOnce().catch((err) => {
+      console.error('[ImapListener] Initial poll error:', err);
+      captureServiceError(err, { service: 'imap-listener', action: 'initial-poll' });
+    });
 
     // Periodic loop
     this.pollTimer = setInterval(async () => {
@@ -307,6 +316,7 @@ export class ImapListenerService {
         await this.pollOnce();
       } catch (err) {
         console.error('[ImapListener] Interval poll error:', err);
+        captureServiceError(err, { service: 'imap-listener', action: 'interval-poll' });
       }
     }, intervalMs);
   }

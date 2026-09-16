@@ -1,17 +1,24 @@
+import './instrument.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { env } from './config/env.js';
+import { Sentry, captureServiceError } from './config/sentry.js';
 import { prisma } from './db/prisma.js';
 import { auth } from './lib/auth.js';
 import { requireAuth, requireRole, AuthenticatedRequest } from './middleware/auth.middleware.js';
+import { errorHandler, sentryResponseErrorCaptureMiddleware } from './middleware/error.middleware.js';
 import { userRoutes, emailRoutes, ticketRoutes } from './routes/index.js';
 import { QueueService } from './services/queue.service.js';
 import { ImapListenerService } from './services/imap-listener.service.js';
 
 const app = express();
+
+// Sentry response status monitor (captures any 5xx response automatically)
+app.use(sentryResponseErrorCaptureMiddleware);
+
 
 // Trust reverse proxy in production (for accurate client IP resolution & secure cookies)
 if (env.NODE_ENV === 'production') {
@@ -42,13 +49,13 @@ if (env.NODE_ENV === 'production') {
 const healthMiddlewares =
   env.NODE_ENV === 'production'
     ? [
-        rateLimit({
-          windowMs: 1 * 60 * 1000, // 1 minute
-          max: 60, // 60 requests per minute
-          standardHeaders: true,
-          legacyHeaders: false,
-        }),
-      ]
+      rateLimit({
+        windowMs: 1 * 60 * 1000, // 1 minute
+        max: 60, // 60 requests per minute
+        standardHeaders: true,
+        legacyHeaders: false,
+      }),
+    ]
     : [];
 
 app.use(
@@ -119,6 +126,21 @@ app.use('/api/webhooks/email', emailRoutes);
 // Ticket Management Routes
 app.use('/api/tickets', ticketRoutes);
 
+// Sentry Debug Test Route (Enabled in non-production or explicitly for testing)
+if (env.NODE_ENV !== 'production') {
+  app.get('/api/debug/sentry-test', (_req, _res) => {
+    throw new Error('TicketAI Sentry Backend Test Error - Everything is working properly!');
+  });
+}
+
+// 404 Route Handler for undefined endpoints
+app.use((req, res) => {
+  res.status(404).json({ error: `Cannot ${req.method} ${req.path}` });
+});
+
+// Global Error Handler Middleware (captures uncaught exceptions with Sentry)
+app.use(errorHandler);
+
 const server = app.listen(env.PORT, async () => {
   console.log(`🚀 TicketAI Backend server running on http://localhost:${env.PORT}`);
   console.log(`📡 Environment: ${env.NODE_ENV}`);
@@ -126,6 +148,7 @@ const server = app.listen(env.PORT, async () => {
     await QueueService.start();
   } catch (error) {
     console.error('Failed to initialize pg-boss queue service:', error);
+    captureServiceError(error, { service: 'pg-boss', action: 'startup' });
   }
 
   // Start IMAP background email polling if enabled
@@ -133,7 +156,19 @@ const server = app.listen(env.PORT, async () => {
     ImapListenerService.start();
   } catch (error) {
     console.error('Failed to start IMAP email listener service:', error);
+    captureServiceError(error, { service: 'imap-listener', action: 'startup' });
   }
+});
+
+// Process-level unhandled errors capture
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('💥 Unhandled Promise Rejection:', reason);
+  captureServiceError(reason, { service: 'process', action: 'unhandledRejection' });
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('💥 Uncaught Exception:', error);
+  captureServiceError(error, { service: 'process', action: 'uncaughtException' });
 });
 
 // Graceful process shutdown
@@ -149,6 +184,7 @@ const shutdown = async (signal: string) => {
     });
   } catch (error) {
     console.error('Error during shutdown:', error);
+    captureServiceError(error, { service: 'process', action: 'shutdown' });
     process.exit(1);
   }
 };
@@ -157,3 +193,4 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 export default app;
+

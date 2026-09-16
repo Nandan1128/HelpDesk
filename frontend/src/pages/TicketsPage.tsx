@@ -55,6 +55,7 @@ export function TicketsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
+
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [metrics, setMetrics] = useState<TicketMetrics>({
     total: 0,
@@ -193,6 +194,8 @@ export function TicketsPage() {
     );
   }, [debouncedSearchQuery, statusFilter, priorityFilter]);
 
+
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -330,19 +333,18 @@ export function TicketsPage() {
                   key={status}
                   type="button"
                   onClick={() => handleStatusFilterChange(status)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
-                    statusFilter === status
-                      ? 'bg-background text-foreground shadow-xs font-semibold'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${statusFilter === status
+                    ? 'bg-background text-foreground shadow-xs font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   {status === 'ALL'
                     ? 'All'
                     : status === 'OPEN'
-                    ? 'Open'
-                    : status === 'RESOLVED'
-                    ? 'Resolved'
-                    : 'Closed'}
+                      ? 'Open'
+                      : status === 'RESOLVED'
+                        ? 'Resolved'
+                        : 'Closed'}
                 </button>
               ))}
             </div>

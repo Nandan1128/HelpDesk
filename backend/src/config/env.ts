@@ -17,7 +17,17 @@ if (process.env.NODE_ENV === 'test') {
     }
   }
 } else {
-  dotenv.config();
+  const possibleEnvPaths = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), 'backend', '.env'),
+    path.resolve(process.cwd(), '..', '.env'),
+  ];
+  for (const envPath of possibleEnvPaths) {
+    if (fs.existsSync(envPath)) {
+      dotenv.config({ path: envPath, override: true });
+      break;
+    }
+  }
 }
 
 const envSchema = z
@@ -57,6 +67,8 @@ const envSchema = z
     MAILGUN_API_KEY: z.string().optional().default(''),
     MAILGUN_DOMAIN: z.string().optional().default(''),
     SUPPORT_EMAIL: z.string().default('support@ticketai.local'),
+    SENTRY_DSN: z.string().optional().default(''),
+    SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(1.0),
     ADMIN_EMAIL: z.string().email().default('admin@ticketai.local'),
     ADMIN_PASSWORD: z.string().min(8).default('AdminPassword123!'),
     ADMIN_NAME: z.string().default('System Administrator'),

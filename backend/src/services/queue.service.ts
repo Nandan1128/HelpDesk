@@ -1,5 +1,6 @@
 import { PgBoss, QueueOptions } from 'pg-boss';
 import { env } from '../config/env.js';
+import { captureServiceError } from '../config/sentry.js';
 
 export const QUEUE_NAMES = {
   CLASSIFY_TICKET: 'classify-ticket',
@@ -28,6 +29,7 @@ export class QueueService {
 
       this.boss.on('error', (err: unknown) => {
         console.error('[pg-boss Queue Error]:', err);
+        captureServiceError(err, { service: 'pg-boss', action: 'connection-error' });
       });
     }
 
@@ -88,6 +90,11 @@ export class QueueService {
               `[pg-boss Worker] Ticket processing failed for ticket ${ticketId} (Job: ${job.id}):`,
               error
             );
+            captureServiceError(error, {
+              service: 'pg-boss',
+              action: 'process-ticket',
+              extra: { ticketId, jobId: job.id, modelName },
+            });
             // Rethrow so pg-boss records job failure and handles retries according to policy
             throw error;
           }
