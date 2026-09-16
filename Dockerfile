@@ -60,5 +60,5 @@ WORKDIR /app/backend
 # Expose server port
 EXPOSE 5000
 
-# Run automated production startup (runs migrations and launches server)
-CMD ["bun", "scripts/start-production.ts"]
+# Run production web server
+CMD ["bun", "src/index.ts"]

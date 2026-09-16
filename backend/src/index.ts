@@ -13,6 +13,8 @@ import { auth } from './lib/auth.js';
 import { requireAuth, requireRole, AuthenticatedRequest } from './middleware/auth.middleware.js';
 import { errorHandler, sentryResponseErrorCaptureMiddleware } from './middleware/error.middleware.js';
 import { userRoutes, emailRoutes, ticketRoutes } from './routes/index.js';
+import { Role } from '@prisma/client';
+import { hashPassword } from 'better-auth/crypto';
 import { QueueService } from './services/queue.service.js';
 import { ImapListenerService } from './services/imap-listener.service.js';
 
@@ -142,6 +144,43 @@ app.use(errorHandler);
 const server = app.listen(env.PORT, '0.0.0.0', async () => {
   console.log(`🚀 TicketAI Backend server running on http://0.0.0.0:${env.PORT}`);
   console.log(`📡 Environment: ${env.NODE_ENV}`);
+  // Run initial admin bootstrap check asynchronously in background
+  (async () => {
+    try {
+      const userCount = await prisma.user.count();
+      if (userCount === 0) {
+        console.log('🌱 Fresh database detected. Creating initial administrator account...');
+        const adminEmail = env.ADMIN_EMAIL || 'admin@ticketai.local';
+        const adminPassword = env.ADMIN_PASSWORD;
+        const adminName = env.ADMIN_NAME || 'System Administrator';
+
+        const hashedPassword = await hashPassword(adminPassword);
+        const admin = await prisma.user.create({
+          data: {
+            email: adminEmail,
+            name: adminName,
+            role: Role.ADMIN,
+            isActive: true,
+            emailVerified: true,
+          },
+        });
+
+        await prisma.account.create({
+          data: {
+            accountId: admin.id,
+            userId: admin.id,
+            providerId: 'credential',
+            issuer: 'local:credential',
+            password: hashedPassword,
+          },
+        });
+        console.log(`✅ Initial Admin Account created: ${adminEmail}`);
+      }
+    } catch (err) {
+      console.warn('Initial admin check warning (non-fatal):', err);
+    }
+  })();
+
   try {
     await QueueService.start();
   } catch (error) {
