@@ -166,7 +166,12 @@ export class EmailService {
       }
 
       try {
-        const fromEmail = env.SUPPORT_EMAIL || 'onboarding@resend.dev';
+        // In Resend sandbox mode, from address must use @resend.dev or a verified custom domain
+        const fromEmail = (env.SUPPORT_EMAIL && !env.SUPPORT_EMAIL.endsWith('@gmail.com'))
+          ? env.SUPPORT_EMAIL
+          : 'onboarding@resend.dev';
+        const replyToAddress = options.replyTo || env.EMAIL_USER || env.SUPPORT_EMAIL || fromAddress;
+
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -179,7 +184,7 @@ export class EmailService {
             subject: options.subject,
             html: options.html,
             text: options.text,
-            reply_to: options.replyTo || fromAddress,
+            reply_to: replyToAddress,
           }),
         });
 
