@@ -97,7 +97,7 @@ describe('AutoResolveService Tests', () => {
       priority: Priority.MEDIUM,
       canAutoResolve: true,
       confidence: 0.95,
-      resolutionMessage: 'Hi Mock User,\n\nPlease click "Forgot Password" on the login page and enter your registered email address.\n\nBest regards,\nCode with Mosh Support',
+      resolutionMessage: 'Hi Mock User,\n\nPlease click "Forgot Password" on the login page and enter your registered email address.\n\nBest regards,\nNandan',
       reasoning: 'Grounded in KB Section 1: Account & Login Issues',
     });
 

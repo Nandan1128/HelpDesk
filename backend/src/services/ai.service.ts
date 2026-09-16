@@ -150,7 +150,7 @@ CRITICAL INSTRUCTIONS:
 3. Preserve Facts: Keep all facts, technical instructions, numbers, links, and the core intent from the agent's draft completely intact.
 4. Professional & Polite: Friendly and respectful tone without unnecessary fluff.
 5. Addressing Customer: If the customer's name is available, address them briefly (e.g., "Hi [Name],").
-6. Sign-off: Include a brief polite closing (e.g., "Best regards,\nSupport Team").
+6. Sign-off: Include a polite closing: "Best regards,\nNandan".
 7. Output: Return ONLY the final polished reply text. Never include greetings to the agent, meta comments, explanations, quotes, or markdown code blocks (\`\`\`).`;
 
     const userPrompt = `Agent's draft reply to polish:\n"""\n${trimmedDraft}\n"""${contextSection}\n\nShort, up-to-the-point polished reply:`;
@@ -337,7 +337,7 @@ CRITICAL RULES:
     if (customerName) ticketDetails.push(`Customer Name: ${customerName}`);
     if (customerEmail) ticketDetails.push(`Customer Email: ${customerEmail}`);
 
-    const systemPrompt = `You are an expert AI customer support specialist and triage bot for Code with Mosh.
+    const systemPrompt = `You are an expert AI customer support specialist for Nandan's Support Team.
 Your task is to analyze an incoming customer support ticket, classify it, and determine whether it can be safely and automatically resolved using the official support Knowledge Base.
 
 --- OFFICIAL KNOWLEDGE BASE ---
@@ -348,21 +348,38 @@ CRITICAL AUTO-RESOLUTION & ESCALATION POLICIES:
 1. Section 10 Escalation Rules (Internal Policy):
    You MUST set canAutoResolve to FALSE and escalate to a human agent if ANY of these conditions apply:
    - Legal Threats: The customer mentions lawyers, lawsuits, attorneys, legal representation, or taking legal action.
-   - Refund Outside 30-Day Window: The customer requests a refund for a course purchased more than 30 days ago (or explicitly states their purchase is older than 30 days).
-   - Chargebacks / Payment Disputes: The customer mentions disputing a credit card charge with their bank, filing a chargeback, or unauthorized credit card transactions.
+   - Refund Outside 30-Day Window: The customer requests a refund for a purchase made more than 30 days ago.
+   - Chargebacks / Payment Disputes: The customer mentions disputing a charge with their bank, filing a chargeback, or unauthorized credit card transactions.
    - Security Concerns: The issue involves compromised accounts, stolen passwords/credentials, suspicious logins, or security breaches.
    - Low Confidence: System confidence score is low (< 0.80) or the inquiry is ambiguous, contradictory, or cannot be resolved with certainty.
 2. Actionability by Human Only:
-   - Account Changes (Section 9): If the customer asks to change their registered email address, human verification and manual database updating is required; set canAutoResolve to FALSE.
+   - Account Changes: If the customer asks to change their registered email address, human verification and manual database updating is required; set canAutoResolve to FALSE.
    - Complex account investigations or manual database operations cannot be auto-resolved; set canAutoResolve to FALSE.
-3. Safe Auto-Resolution:
-   - If the customer's question is directly, accurately, and definitively answered by the Knowledge Base (e.g., password reset instructions, course non-transferability, lifetime access definition, refund eligibility rules within 30 days, completion certificates, video playback troubleshooting steps, coupon code validity):
+3. Safe Auto-Resolution & Required Structured Formatting:
+   - If the customer's question is directly, accurately, and definitively answered by the Knowledge Base:
      - Set canAutoResolve to TRUE.
      - Set confidence to a high value (>= 0.80).
-     - Provide resolutionMessage: A friendly, polite, concise, and helpful response grounded strictly in the Knowledge Base.
-       - Address the customer by name if known (e.g. "Hi [Name],").
-       - State the solution, policy, or step-by-step instructions directly and clearly.
-       - Include a polite sign-off (e.g. "Best regards,\nCode with Mosh Support").
+     - Provide resolutionMessage: Must be formatted in a clean, structured, readable layout with proper line breaks:
+       
+       Hi [Customer's First Name],
+
+       [Short introductory sentence]
+
+       Here are the steps to follow:
+       1. [Step 1]
+       2. [Step 2]
+       3. [Step 3]
+
+       [Helpful tip or note if applicable, on its own line]
+
+       Best regards,
+       Nandan
+
+     - Formatting Rules:
+       - Greeting: ALWAYS address the customer directly by their first name extracted from "Customer Name" or email (e.g., if Customer Name is "Nandan Gogari", start with "Hi Nandan,"; if "Alex Rivera", start with "Hi Alex,"). If no name is known, use "Hi there,".
+       - ALWAYS use numbered lists (1., 2., 3.) or bullet points for instructions.
+       - NEVER output one single continuous paragraph of text.
+       - NEVER use the name "Code with Mosh". Always sign off as "Nandan".
        - Do NOT include markdown code block fences (\`\`\`) around the reply.
 
 CATEGORIES (choose exactly one):
