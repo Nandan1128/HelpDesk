@@ -157,13 +157,84 @@ export class EmailService {
       }
     }
 
-    // 3. SendGrid Provider (if configured later)
+    // 3. Resend HTTP API Provider (Recommended for Railway / cloud deployments - uses port 443)
+    if (provider === 'resend') {
+      const apiKey = env.RESEND_API_KEY || process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        console.error('❌ [EmailService] RESEND_API_KEY is not set.');
+        return { success: false, error: 'RESEND_API_KEY missing' };
+      }
+
+      try {
+        const fromEmail = env.SUPPORT_EMAIL || 'onboarding@resend.dev';
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: `${fromName} <${fromEmail}>`,
+            to: [options.to],
+            subject: options.subject,
+            html: options.html,
+            text: options.text,
+            reply_to: options.replyTo || fromAddress,
+          }),
+        });
+
+        const data = await res.json() as any;
+        if (!res.ok) {
+          console.error(`❌ [EmailService] Resend API error:`, data);
+          return { success: false, error: data?.message || 'Resend API failed' };
+        }
+
+        console.log(`✅ [EmailService] Email delivered via Resend to ${options.to} (ID: ${data.id})`);
+        return { success: true, messageId: data.id };
+      } catch (error: any) {
+        console.error(`❌ [EmailService] Resend network error:`, error);
+        return { success: false, error: error?.message || 'Resend network error' };
+      }
+    }
+
+    // 4. SendGrid HTTP API Provider
     if (provider === 'sendgrid') {
-      console.warn('⚠️ [EmailService] SendGrid provider selected. For domain-less setup, switch EMAIL_PROVIDER=gmail in .env');
-      return {
-        success: false,
-        error: 'SendGrid not configured',
-      };
+      const apiKey = env.SENDGRID_API_KEY || process.env.SENDGRID_API_KEY;
+      if (!apiKey) {
+        console.error('❌ [EmailService] SENDGRID_API_KEY is not set.');
+        return { success: false, error: 'SENDGRID_API_KEY missing' };
+      }
+
+      try {
+        const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            personalizations: [{ to: [{ email: options.to }] }],
+            from: { email: fromAddress, name: fromName },
+            subject: options.subject,
+            content: [
+              { type: 'text/html', value: options.html },
+              ...(options.text ? [{ type: 'text/plain', value: options.text }] : []),
+            ],
+          }),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error(`❌ [EmailService] SendGrid API error:`, errText);
+          return { success: false, error: errText };
+        }
+
+        console.log(`✅ [EmailService] Email delivered via SendGrid to ${options.to}`);
+        return { success: true };
+      } catch (error: any) {
+        console.error(`❌ [EmailService] SendGrid network error:`, error);
+        return { success: false, error: error?.message || 'SendGrid network error' };
+      }
     }
 
     return {
