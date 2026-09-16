@@ -197,7 +197,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     const parseResult = createTicketSchema.safeParse(req.body);
     if (!parseResult.success) {
       return res.status(400).json({
-        error: parseResult.error.errors[0]?.message || 'Invalid ticket data',
+        error: parseResult.error.issues[0]?.message || 'Invalid ticket data',
       });
     }
 
@@ -620,7 +620,7 @@ router.patch('/:id', requireAuth, async (req: AuthenticatedRequest, res: Respons
     const parseResult = updateTicketSchema.safeParse(req.body);
     if (!parseResult.success) {
       return res.status(400).json({
-        error: parseResult.error.errors[0]?.message || 'Invalid ticket update data',
+        error: parseResult.error.issues[0]?.message || 'Invalid ticket update data',
       });
     }
 
@@ -699,7 +699,7 @@ router.post('/classify', requireAuth, async (req: AuthenticatedRequest, res: Res
     const parseResult = classifySchema.safeParse(req.body);
     if (!parseResult.success) {
       return res.status(400).json({
-        error: parseResult.error.errors[0]?.message || 'Invalid classification payload',
+        error: parseResult.error.issues[0]?.message || 'Invalid classification payload',
       });
     }
 
@@ -767,7 +767,7 @@ router.post('/summarize', requireAuth, async (req: AuthenticatedRequest, res: Re
     const parseResult = summarizeSchema.safeParse(req.body);
     if (!parseResult.success) {
       return res.status(400).json({
-        error: parseResult.error.errors[0]?.message || 'ticketId is required',
+        error: parseResult.error.issues[0]?.message || 'ticketId is required',
       });
     }
 
@@ -858,7 +858,7 @@ router.post('/polish', requireAuth, async (req: AuthenticatedRequest, res: Respo
     const parseResult = polishSchema.safeParse(req.body);
     if (!parseResult.success) {
       return res.status(400).json({
-        error: parseResult.error.errors[0]?.message || 'Draft reply text cannot be empty',
+        error: parseResult.error.issues[0]?.message || 'Draft reply text cannot be empty',
       });
     }
 
@@ -944,7 +944,7 @@ router.post('/:id/polish', requireAuth, async (req: AuthenticatedRequest, res: R
     const parseResult = polishSchema.safeParse(req.body);
     if (!parseResult.success) {
       return res.status(400).json({
-        error: parseResult.error.errors[0]?.message || 'Draft reply text cannot be empty',
+        error: parseResult.error.issues[0]?.message || 'Draft reply text cannot be empty',
       });
     }
 
@@ -1144,7 +1144,7 @@ router.post('/:id/messages', requireAuth, async (req: AuthenticatedRequest, res:
     const parseResult = createMessageSchema.safeParse(req.body);
     if (!parseResult.success) {
       return res.status(400).json({
-        error: parseResult.error.errors[0]?.message || 'Invalid message data',
+        error: parseResult.error.issues[0]?.message || 'Invalid message data',
       });
     }
 

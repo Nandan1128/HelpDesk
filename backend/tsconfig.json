@@ -10,9 +10,13 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@core": ["../core/src/index.ts"],
+      "@core/*": ["../core/src/*"],
+      "@ticket-system/core": ["../core/src/index.ts"],
+      "@ticket-system/core/*": ["../core/src/*"]
     },
     "outDir": "dist"
   },
-  "include": ["src/**/*", "prisma/**/*"]
+  "include": ["src/**/*", "prisma/**/*", "../core/src/**/*"]
 }

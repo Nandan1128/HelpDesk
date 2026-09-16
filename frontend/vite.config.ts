@@ -9,6 +9,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@core': path.resolve(__dirname, '../core/src'),
+      '@ticket-system/core': path.resolve(__dirname, '../core/src'),
     },
   },
   server: {

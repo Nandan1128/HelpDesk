@@ -1,23 +1,6 @@
-export type Role = 'ADMIN' | 'AGENT';
+import type { Role, UserItem, UserSortField, UserSortOrder } from '@core';
 
-export interface UserItem {
-  id: string;
-  name: string;
-  email: string;
-  emailVerified: boolean;
-  image?: string | null;
-  role: Role;
-  isActive: boolean;
-  deletedAt?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  _count?: {
-    assignedTickets: number;
-  };
-}
-
-export type UserSortField = 'createdAt' | 'name' | 'email' | 'role';
-export type UserSortOrder = 'asc' | 'desc';
+export type { Role, UserItem, UserSortField, UserSortOrder };
 
 export interface UserTableProps {
   users: UserItem[];

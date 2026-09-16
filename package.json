@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "description": "AI-Powered Ticket Management System with Express, React, TypeScript, Bun, Prisma, PostgreSQL, and Google Gemini",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "core"
+  ],
   "scripts": {
     "dev": "concurrently \"bun run dev:backend\" \"bun run dev:frontend\"",
     "dev:backend": "cd backend && bun run dev",

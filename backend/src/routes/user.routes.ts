@@ -1,9 +1,10 @@
 import { Router, Response } from 'express';
 import { Prisma, Role } from '@prisma/client';
-import { z } from 'zod';
 import { hashPassword } from 'better-auth/crypto';
 import { prisma } from '../db/prisma.js';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth.middleware.js';
+
+import { createUserSchema, updateUserSchema } from '@core';
 
 const router = Router();
 
@@ -15,44 +16,6 @@ function isAiAgentUser(user: { email: string; name: string; role: Role }): boole
   return user.email.toLowerCase() === aiEmail || (user.name === 'AI' && user.role === Role.AGENT);
 }
 
-const createUserSchema = z.object({
-  name: z
-    .string({ required_error: 'Name is required' })
-    .trim()
-    .min(3, 'Name must be at least 3 characters'),
-  email: z
-    .string({ required_error: 'Email is required' })
-    .trim()
-    .email('Please enter a valid email address'),
-  password: z
-    .string({ required_error: 'Password is required' })
-    .trim()
-    .min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['ADMIN', 'AGENT']).optional().default('AGENT'),
-});
-
-const updateUserSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(3, 'Name must be at least 3 characters')
-    .optional(),
-  email: z
-    .string()
-    .trim()
-    .email('Please enter a valid email address')
-    .optional(),
-  password: z
-    .string()
-    .trim()
-    .refine((val) => val === '' || val.length >= 8, {
-      message: 'Password must be at least 8 characters',
-    })
-    .optional(),
-  role: z.enum(['ADMIN', 'AGENT']).optional(),
-  isActive: z.boolean().optional(),
-});
-
 /**
  * POST /api/users
  * Create a new user account (Admin only)
@@ -60,8 +23,8 @@ const updateUserSchema = z.object({
 router.post('/', async (req: AuthenticatedRequest, res: Response) => {
   const parseResult = createUserSchema.safeParse(req.body);
   if (!parseResult.success) {
-    const errorMsg = parseResult.error.errors[0]?.message || 'Invalid input data';
-    return res.status(400).json({ error: errorMsg, errors: parseResult.error.errors });
+    const errorMsg = parseResult.error.issues[0]?.message || 'Invalid input data';
+    return res.status(400).json({ error: errorMsg, errors: parseResult.error.issues });
   }
 
   const { name, email, password, role } = parseResult.data;
@@ -281,8 +244,8 @@ const handleUpdateUser = async (req: AuthenticatedRequest, res: Response) => {
 
   const parseResult = updateUserSchema.safeParse(req.body);
   if (!parseResult.success) {
-    const errorMsg = parseResult.error.errors[0]?.message || 'Invalid input data';
-    return res.status(400).json({ error: errorMsg, errors: parseResult.error.errors });
+    const errorMsg = parseResult.error.issues[0]?.message || 'Invalid input data';
+    return res.status(400).json({ error: errorMsg, errors: parseResult.error.issues });
   }
 
   const existingUser = await prisma.user.findUnique({

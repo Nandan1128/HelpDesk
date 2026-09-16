@@ -17,9 +17,13 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@core": ["../core/src/index.ts"],
+      "@core/*": ["../core/src/*"],
+      "@ticket-system/core": ["../core/src/index.ts"],
+      "@ticket-system/core/*": ["../core/src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../core/src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
