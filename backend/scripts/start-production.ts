@@ -100,7 +100,7 @@ async function main() {
 
   console.log('🌟 Starting Express Web Server...');
   // Dynamically import the main server module
-  await import('../src/index.js');
+  await import('../src/index.ts');
 }
 
 main().catch((err) => {
