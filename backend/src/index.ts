@@ -59,18 +59,7 @@ if (env.NODE_ENV === 'production') {
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (
-        env.TRUSTED_ORIGINS.includes(origin) ||
-        origin.endsWith('.vercel.app') ||
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1')
-      ) {
-        return callback(null, true);
-      }
-      return callback(null, false);
-    },
+    origin: env.TRUSTED_ORIGINS,
     credentials: true,
   })
 );
@@ -164,7 +153,7 @@ const server = app.listen(env.PORT, '0.0.0.0', async () => {
 
       if (adminEmail && adminPassword) {
         const hashedPassword = await hashPassword(adminPassword);
-        
+
         let admin = await prisma.user.findFirst({
           where: {
             OR: [
