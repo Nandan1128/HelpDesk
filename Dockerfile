@@ -63,5 +63,5 @@ WORKDIR /app/backend
 # Expose server port
 EXPOSE 5000
 
-# Run production web server
-CMD ["bun", "src/index.ts"]
+# Run database schema push on boot and start production web server
+CMD ["sh", "-c", "bun x prisma db push --accept-data-loss && bun src/index.ts"]
