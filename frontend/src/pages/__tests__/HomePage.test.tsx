@@ -225,7 +225,7 @@ describe('HomePage / Support Dashboard Component Tests', () => {
     });
   });
 
-  describe('4. Error and Diagnostics Handling', () => {
+  describe('4. Error Handling', () => {
     it('displays error banner and allows retry when API fails', async () => {
       const user = userEvent.setup();
       vi.spyOn(api, 'get').mockImplementation((url: string) => {
@@ -251,16 +251,6 @@ describe('HomePage / Support Dashboard Component Tests', () => {
 
       await user.click(retryBtn);
       expect(await screen.findByText('100')).toBeInTheDocument();
-    });
-
-    it('renders system diagnostics section with database and auth status', async () => {
-      renderHomePage();
-
-      const diagCard = await screen.findByTestId('card-system-diagnostics');
-      expect(diagCard).toHaveTextContent(/Live System Diagnostics/i);
-      expect(diagCard).toHaveTextContent(/Express \(Port 5000\)/i);
-      expect(diagCard).toHaveTextContent(/Prisma ORM/i);
-      expect(diagCard).toHaveTextContent(/Better Auth/i);
     });
   });
 

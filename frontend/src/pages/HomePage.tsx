@@ -6,12 +6,9 @@ import {
   Sparkles,
   Bot,
   Timer,
-  CheckCircle2,
   AlertCircle,
   RefreshCw,
   ArrowRight,
-  Database,
-  ShieldCheck,
   Layers,
   Inbox,
 } from 'lucide-react';
@@ -77,13 +74,6 @@ export interface DashboardData {
   dailyTickets?: DailyTicketCount[];
 }
 
-interface HealthStatus {
-  status: string;
-  database: string;
-  timestamp: string;
-  version: string;
-}
-
 export function HomePage() {
   const navigate = useNavigate();
   const { data: session } = useSession();
@@ -94,10 +84,6 @@ export function HomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [healthLoading, setHealthLoading] = useState(true);
-  const [healthError, setHealthError] = useState<string | null>(null);
 
   const fetchDashboard = useCallback(async (isManual = false) => {
     if (isManual) {
@@ -123,24 +109,9 @@ export function HomePage() {
     }
   }, []);
 
-  const fetchHealth = useCallback(async () => {
-    try {
-      const res = await api.get<HealthStatus>('/health');
-      setHealth(res.data);
-      setHealthError(null);
-    } catch (err: any) {
-      setHealthError(
-        err.response?.data?.error || err.message || 'Failed to connect to backend'
-      );
-    } finally {
-      setHealthLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     fetchDashboard();
-    fetchHealth();
-  }, [fetchDashboard, fetchHealth]);
+  }, [fetchDashboard]);
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -579,66 +550,6 @@ export function HomePage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* System Diagnostics & Backend Status */}
-      <Card className="border-border bg-card shadow-sm" data-testid="card-system-diagnostics">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold tracking-tight flex items-center gap-2">
-            <Database className="w-4 h-4 text-primary" /> Live System Diagnostics
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Real-time status of backend API services and database connections
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent>
-          {healthLoading ? (
-            <div className="py-4 text-center text-muted-foreground text-sm animate-pulse">
-              Querying backend &amp; database health...
-            </div>
-          ) : healthError ? (
-            <div className="flex items-start space-x-3 bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-red-600 dark:text-red-400 text-sm">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500 mt-0.5" />
-              <div>
-                <p className="font-medium">Backend Connection Error</p>
-                <p className="text-xs mt-1">{healthError}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center justify-between p-4 bg-muted/40 rounded-xl border border-border">
-                <div className="flex flex-col">
-                  <span className="text-xs text-muted-foreground">Backend API</span>
-                  <span className="text-sm font-semibold text-foreground mt-0.5">Express (Port 5000)</span>
-                </div>
-                <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {health?.status}
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-muted/40 rounded-xl border border-border">
-                <div className="flex flex-col">
-                  <span className="text-xs text-muted-foreground">PostgreSQL Database</span>
-                  <span className="text-sm font-semibold text-foreground mt-0.5">Prisma ORM</span>
-                </div>
-                <Badge variant="outline" className="text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {health?.database}
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-muted/40 rounded-xl border border-border">
-                <div className="flex flex-col">
-                  <span className="text-xs text-muted-foreground">Auth Engine</span>
-                  <span className="text-sm font-semibold text-foreground mt-0.5">Better Auth</span>
-                </div>
-                <Badge variant="outline" className="text-primary border-primary/30 bg-primary/10 gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Active Session
-                </Badge>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

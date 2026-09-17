@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Bot,
@@ -8,8 +8,9 @@ import {
   LayoutDashboard,
   Users,
   Ticket,
-  BookOpen,
   Loader2,
+  Menu,
+  X,
 } from 'lucide-react';
 import { signOut, useSession, AuthUser } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,12 @@ export function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Auto-close mobile menu on route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const user = session?.user as AuthUser | undefined;
 
@@ -105,13 +112,6 @@ export function Navbar() {
                 <Ticket className="w-4 h-4 mr-2" />
                 Tickets
               </Link>
-              <span
-                className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground/50 cursor-not-allowed"
-                title="Available in Phase 5"
-              >
-                <BookOpen className="w-4 h-4 mr-2 opacity-50" />
-                Knowledge Base
-              </span>
             </nav>
           </div>
 
@@ -164,10 +164,65 @@ export function Navbar() {
                   </>
                 )}
               </Button>
+              {/* Mobile Menu Toggle Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="md:hidden p-2 text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle navigation menu"
+                data-testid="mobile-menu-toggle"
+              >
+                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </Button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-border bg-background/98 backdrop-blur px-4 pt-2.5 pb-4 space-y-1 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
+          <Link
+            to="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              location.pathname === '/'
+                ? 'bg-muted text-foreground font-semibold shadow-xs'
+                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4 mr-3 text-primary" />
+            Dashboard
+          </Link>
+          {isAdmin && (
+            <Link
+              to="/users"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === '/users'
+                  ? 'bg-muted text-foreground font-semibold shadow-xs'
+                  : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+              }`}
+            >
+              <Users className="w-4 h-4 mr-3 text-primary" />
+              Users
+            </Link>
+          )}
+          <Link
+            to="/tickets"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              location.pathname.startsWith('/tickets')
+                ? 'bg-muted text-foreground font-semibold shadow-xs'
+                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+            }`}
+          >
+            <Ticket className="w-4 h-4 mr-3 text-primary" />
+            Tickets
+          </Link>
+        </div>
+      )}
     </header>
   );
 }
