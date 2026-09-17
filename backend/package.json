@@ -13,7 +13,7 @@
     "start:test": "bun --env-file=.env.test dist/index.js",
     "db:migrate": "bun x prisma migrate dev",
     "db:migrate:deploy": "bun x prisma migrate deploy",
-    "db:generate": "bun x prisma generate",
+    "db:generate": "prisma generate",
     "db:seed": "bun prisma/seed.ts",
     "seed:ai": "bun prisma/seed-ai-agent.ts",
     "db:studio": "bun x prisma studio",

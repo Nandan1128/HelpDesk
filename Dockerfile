@@ -8,7 +8,10 @@ FROM oven/bun:1.2-slim AS builder
 WORKDIR /app
 
 # Install OpenSSL for Prisma engine compatibility
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Provide dummy build-time DATABASE_URL so Prisma client can generate without live database
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public"
 
 # Copy package descriptors and lockfile for caching
 COPY package.json bun.lock* ./
@@ -26,7 +29,7 @@ COPY frontend/ ./frontend/
 
 # Generate Prisma Client
 WORKDIR /app/backend
-RUN bun x prisma generate
+RUN bun run db:generate || bun run prisma generate || bun x prisma generate
 
 # Build Frontend Static Assets (Vite SPA)
 WORKDIR /app/frontend
